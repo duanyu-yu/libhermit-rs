@@ -649,10 +649,12 @@ pub fn virtual_to_physical(virtual_address: VirtAddr) -> PhysAddr {
 
 	for i in (0..3).rev() {
 		page_bits -= PAGE_MAP_BITS as u64;
-
+		
 		let vpn = (virtual_address.as_u64() >> page_bits) as isize;
 		let ptr = SELF[i].as_ptr::<u64>();
 		let entry = unsafe { *ptr.offset(vpn) };
+
+		info!("inside virt to phys");
 
 		if entry & PageTableEntryFlags::HUGE_PAGE.bits() != 0 || i == 0 {
 			let off = virtual_address.as_u64()
@@ -707,6 +709,7 @@ pub fn unmap<S: PageSize>(virtual_address: VirtAddr, count: usize) {
 }
 
 pub fn identity_map(start_address: PhysAddr, end_address: PhysAddr) {
+	info!("begin to identity-map for start_address {:#X} and end_address {:#X}", start_address, end_address);
 	let first_page = Page::<BasePageSize>::including_address(VirtAddr(start_address.as_u64()));
 	let last_page = Page::<BasePageSize>::including_address(VirtAddr(end_address.as_u64()));
 	assert!(

@@ -35,7 +35,8 @@ name = "measure_startup_time"
 harness = false
 
 [features]
-default = ["pci", "acpi", "fsgsbase", "smp"]
+default = ["mmio","pci", "acpi", "fsgsbase", "smp"]
+mmio = []
 vga = []
 newlib = []
 pci = []

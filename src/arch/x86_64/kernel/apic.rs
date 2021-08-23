@@ -306,11 +306,11 @@ pub fn init() {
 	unsafe {
 		CPU_LOCAL_APIC_IDS = Some(Vec::new());
 	}
-
+	
 	// Detect CPUs and APICs.
 	let local_apic_physical_address = detect_from_uhyve()
 		.or_else(|_e| detect_from_acpi())
-		.expect("HermitCore requires an APIC system");
+		.unwrap_or(PhysAddr(unsafe { rdmsr(x86::msr::IA32_APIC_BASE) })  );
 
 	// Initialize x2APIC or xAPIC, depending on what's available.
 	init_x2apic();
@@ -357,7 +357,9 @@ pub fn init() {
 	}
 
 	// init ioapic
-	init_ioapic();
+	if !(unsafe {IOAPIC_ADDRESS.is_zero()} ) {
+		init_ioapic();
+	}
 }
 
 fn init_ioapic() {
@@ -725,11 +727,13 @@ fn ioapic_write(reg: u32, value: u32) {
 	}
 }
 
-fn ioapic_read(reg: u32) -> u32 {
+fn ioapic_read(reg: u32) -> u32 { // reg => IOAPIC_REG_VER:u32 = 0x0001
 	let value;
 
 	unsafe {
-		core::ptr::write_volatile(IOAPIC_ADDRESS.as_mut_ptr::<u32>(), reg);
+		let ioapic_mut_ptr = IOAPIC_ADDRESS.as_mut_ptr::<u32>(); 
+		core::ptr::write_volatile(ioapic_mut_ptr, reg); // IOAPIC_ADDRESS:VirtAddr = VirtAddr::Zero()
+		
 		value =
 			core::ptr::read_volatile((IOAPIC_ADDRESS + 4 * mem::size_of::<u32>()).as_ptr::<u32>());
 	}

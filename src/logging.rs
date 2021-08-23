@@ -43,7 +43,7 @@ pub fn init() {
 		Some("Trace") => LevelFilter::Trace,
 		Some("Warn") => LevelFilter::Warn,
 		Some("Info") => LevelFilter::Info,
-		_ => LevelFilter::Info,
+		_ => LevelFilter::Debug,
 	};
 	set_max_level(max_level);
 }

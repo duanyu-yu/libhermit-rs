@@ -21,7 +21,10 @@ use crate::arch::x86_64::kernel::serial::SerialPort;
 use crate::environment;
 use crate::kernel_message_buffer;
 use crate::scheduler::CoreId;
+use crate::arch::mm::PhysAddr;
 
+#[cfg(feature = "mmio")]
+pub mod mmio;
 #[cfg(feature = "acpi")]
 pub mod acpi;
 pub mod apic;
@@ -103,6 +106,10 @@ static mut BOOT_INFO: *mut BootInfo = ptr::null_mut();
 
 /// Serial port to print kernel messages
 static mut COM1: SerialPort = SerialPort::new(0x3f8);
+
+#[cfg(feature = "mmio")]
+const MMIO_START: usize = mmio::MMIO_START;
+const MMIO_END: usize = mmio::MMIO_END;
 
 pub fn has_ipdevice() -> bool {
 	let ip = unsafe { core::ptr::read_volatile(&(*BOOT_INFO).hcip) };
@@ -348,6 +355,8 @@ pub fn boot_processor_init() {
 	scheduler::install_timer_handler();
 	finish_processor_init();
 	irq::enable();
+
+	mmio::detect_network(PhysAddr::from(MMIO_START), PhysAddr::from(MMIO_END));
 }
 
 /// Boots all available Application Processors on bare-metal or QEMU.

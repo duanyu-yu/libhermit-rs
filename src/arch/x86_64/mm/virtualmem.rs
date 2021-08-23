@@ -23,6 +23,12 @@ pub fn init() {
 	KERNEL_FREE_LIST.lock().list.push_back(entry);
 }
 
+pub fn reserve(start_address: VirtAddr, size: usize) {
+	KERNEL_FREE_LIST.lock().reserve(start_address.as_usize(), size);
+	info!("Region {:X} - {:X} from virtual address space has been reserved.", start_address, start_address + size);
+	print_information();
+}
+
 pub fn allocate(size: usize) -> Result<VirtAddr, ()> {
 	assert!(size > 0);
 	assert_eq!(
@@ -38,8 +44,8 @@ pub fn allocate(size: usize) -> Result<VirtAddr, ()> {
 			.lock()
 			.allocate(size, None)?
 			.try_into()
-			.unwrap(),
-	))
+			.unwrap()
+	),)
 }
 
 pub fn allocate_aligned(size: usize, alignment: usize) -> Result<VirtAddr, ()> {

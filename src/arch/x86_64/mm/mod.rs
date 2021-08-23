@@ -16,6 +16,10 @@ use core::slice;
 pub use x86::bits64::paging::PAddr as PhysAddr;
 pub use x86::bits64::paging::VAddr as VirtAddr;
 
+#[cfg(feature = "mmio")]
+use crate::kernel::mmio::{MMIO_START, MMIO_END};
+pub use self::paging::{BasePageSize, PageTableEntryFlags, PageSize};
+
 /// Memory translation, allocation and deallocation for MultibootInformation
 struct MultibootMemory;
 
@@ -51,8 +55,25 @@ impl multiboot::information::MemoryManagement for MultibootMemory {
 
 static mut MEM: MultibootMemory = MultibootMemory::new();
 
+#[cfg(feature = "mmio")]
+fn init_mmio_region() {
+	physicalmem::reserve(PhysAddr(0x700000), 0x100000); // test reserve from physical address space
+
+	physicalmem::reserve(PhysAddr(MMIO_START as u64), MMIO_END - MMIO_START);
+	// virtualmem::reserve(VirtAddr(MMIO_START as u64), MMIO_END - MMIO_START); // Error by reserve from virtual address space
+
+	// paging::identity_map(PhysAddr(MMIO_START as u64), PhysAddr(MMIO_END as u64)); 
+
+	// let count = (MMIO_END - MMIO_START) / BasePageSize::SIZE;
+	// let flags = PageTableEntryFlags::empty();
+	// paging::map::<BasePageSize>(VirtAddr(MMIO_START as u64), PhysAddr(MMIO_START as u64), count, flags);
+}
+
 pub fn init() {
 	paging::init();
 	physicalmem::init();
 	virtualmem::init();
+	
+	#[cfg(feature = "mmio")]
+	init_mmio_region();
 }

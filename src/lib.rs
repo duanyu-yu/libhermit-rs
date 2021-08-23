@@ -86,6 +86,9 @@ pub use crate::arch::*;
 pub use crate::config::*;
 pub use crate::syscalls::*;
 
+use crate::arch::mm::VirtAddr;
+use crate::arch::x86_64::mm::paging;
+
 #[macro_use]
 mod macros;
 

@@ -92,10 +92,24 @@ pub fn init() {
 	detect_from_multiboot_info()
 		.or_else(|_e| detect_from_limits())
 		.unwrap();
+
+	// info!("Test reserve region: 0x370000 - 0x3800000");
+	// PHYSICAL_FREE_LIST.lock().reserve(0x3700000, 0x3800000 - 0x3700000);
+
+	// #[cfg(feature = "mmio")]
+	// PHYSICAL_FREE_LIST.lock().reserve(MMIO_START, MMIO_END - MMIO_START);
+	// info!("Reserved MMIO region: {:#X} - {:#X}", MMIO_START, MMIO_END);
+	// print_information();
 }
 
 pub fn total_memory_size() -> usize {
 	TOTAL_MEMORY.load(Ordering::SeqCst)
+}
+
+pub fn reserve(start_address: PhysAddr, size: usize) {
+	PHYSICAL_FREE_LIST.lock().reserve(start_address.as_usize(), size);
+	info!("Region {:X} - {:X} from physical address space has been reserved.", start_address, start_address + size);
+	print_information();
 }
 
 pub fn allocate(size: usize) -> Result<PhysAddr, ()> {
@@ -113,8 +127,8 @@ pub fn allocate(size: usize) -> Result<PhysAddr, ()> {
 			.lock()
 			.allocate(size, None)?
 			.try_into()
-			.unwrap(),
-	))
+			.unwrap()
+	),)
 }
 
 pub fn allocate_aligned(size: usize, alignment: usize) -> Result<PhysAddr, ()> {

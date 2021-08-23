@@ -50,113 +50,113 @@ static mut SLP_TYPA: Option<u8> = None;
 /// The "Root System Description Pointer" structure providing pointers to all other ACPI tables.
 #[repr(C, packed)]
 struct AcpiRsdp {
-	signature: [u8; 8],
-	checksum: u8,
-	oem_id: [u8; 6],
-	revision: u8,
-	rsdt_physical_address: u32,
-	length: u32,
-	xsdt_physical_address: u64,
-	extended_checksum: u8,
-	reserved: [u8; 3],
+signature: [u8; 8],
+checksum: u8,
+oem_id: [u8; 6],
+revision: u8,
+rsdt_physical_address: u32,
+length: u32,
+xsdt_physical_address: u64,
+extended_checksum: u8,
+reserved: [u8; 3],
 }
 
 impl AcpiRsdp {
-	fn oem_id(&self) -> &str {
-		unsafe { str::from_utf8_unchecked(&self.oem_id) }
-	}
+fn oem_id(&self) -> &str {
+	unsafe { str::from_utf8_unchecked(&self.oem_id) }
+}
 
-	fn signature(&self) -> &str {
-		unsafe { str::from_utf8_unchecked(&self.signature) }
-	}
+fn signature(&self) -> &str {
+	unsafe { str::from_utf8_unchecked(&self.signature) }
+}
 }
 
 /// The header of (almost) every ACPI table.
 #[repr(C, packed)]
 struct AcpiSdtHeader {
-	signature: [u8; 4],
-	length: u32,
-	revision: u8,
-	checksum: u8,
-	oem_id: [u8; 6],
-	oem_table_id: [u8; 8],
-	oem_revision: u32,
-	creator_id: u32,
-	creator_revision: u32,
+signature: [u8; 4],
+length: u32,
+revision: u8,
+checksum: u8,
+oem_id: [u8; 6],
+oem_table_id: [u8; 8],
+oem_revision: u32,
+creator_id: u32,
+creator_revision: u32,
 }
 
 impl AcpiSdtHeader {
-	fn signature(&self) -> &str {
-		unsafe { str::from_utf8_unchecked(&self.signature) }
-	}
+fn signature(&self) -> &str {
+	unsafe { str::from_utf8_unchecked(&self.signature) }
+}
 }
 
 /// A convenience structure to work with an ACPI table.
 /// Maps a single table to memory and frees the memory when a variable of this structure goes out of scope.
 pub struct AcpiTable<'a> {
-	header: &'a AcpiSdtHeader,
-	allocated_virtual_address: VirtAddr,
-	allocated_length: usize,
+header: &'a AcpiSdtHeader,
+allocated_virtual_address: VirtAddr,
+allocated_length: usize,
 }
 
 impl<'a> AcpiTable<'a> {
-	fn map(physical_address: PhysAddr) -> Self {
-		let mut flags = PageTableEntryFlags::empty();
-		flags.normal().read_only().execute_disable();
+fn map(physical_address: PhysAddr) -> Self {
+	let mut flags = PageTableEntryFlags::empty();
+	flags.normal().read_only().execute_disable();
 
-		// Allocate two 4 KiB pages for the table and map it.
-		// This guarantees that we can access at least the "length" field of the table header when its physical address
-		// crosses a page boundary.
-		let mut allocated_length = 2 * BasePageSize::SIZE;
-		let mut count = allocated_length / BasePageSize::SIZE;
+	// Allocate two 4 KiB pages for the table and map it.
+	// This guarantees that we can access at least the "length" field of the table header when its physical address
+	// crosses a page boundary.
+	let mut allocated_length = 2 * BasePageSize::SIZE;
+	let mut count = allocated_length / BasePageSize::SIZE;
 
-		let physical_map_address = physical_address.align_down_to_base_page();
-		let offset: usize = (physical_address - physical_map_address).into();
-		let mut virtual_address = virtualmem::allocate(allocated_length).unwrap();
+	let physical_map_address = physical_address.align_down_to_base_page();
+	let offset: usize = (physical_address - physical_map_address).into();
+	let mut virtual_address = virtualmem::allocate(allocated_length).unwrap();
+	paging::map::<BasePageSize>(virtual_address, physical_map_address, count, flags);
+
+	// Get a pointer to the header and query the table length.
+	let mut header_ptr: *const AcpiSdtHeader = (virtual_address + offset).as_ptr();
+	let table_length = unsafe { (*header_ptr).length } as usize;
+
+	// Remap if the length exceeds what we've allocated.
+	if table_length > allocated_length - offset {
+		virtualmem::deallocate(virtual_address, allocated_length);
+
+		allocated_length = align_up!(table_length + offset, BasePageSize::SIZE);
+		count = allocated_length / BasePageSize::SIZE;
+
+		virtual_address = virtualmem::allocate(allocated_length).unwrap();
 		paging::map::<BasePageSize>(virtual_address, physical_map_address, count, flags);
 
-		// Get a pointer to the header and query the table length.
-		let mut header_ptr: *const AcpiSdtHeader = (virtual_address + offset).as_ptr();
-		let table_length = unsafe { (*header_ptr).length } as usize;
-
-		// Remap if the length exceeds what we've allocated.
-		if table_length > allocated_length - offset {
-			virtualmem::deallocate(virtual_address, allocated_length);
-
-			allocated_length = align_up!(table_length + offset, BasePageSize::SIZE);
-			count = allocated_length / BasePageSize::SIZE;
-
-			virtual_address = virtualmem::allocate(allocated_length).unwrap();
-			paging::map::<BasePageSize>(virtual_address, physical_map_address, count, flags);
-
-			header_ptr = (virtual_address + offset).as_ptr();
-		}
-
-		// Return the table.
-		Self {
-			header: unsafe { &*header_ptr },
-			allocated_virtual_address: virtual_address,
-			allocated_length,
-		}
+		header_ptr = (virtual_address + offset).as_ptr();
 	}
 
-	pub fn header_start_address(&self) -> usize {
-		self.header as *const _ as usize
-	}
-
-	pub fn table_start_address(&self) -> usize {
-		self.header_start_address() + mem::size_of::<AcpiSdtHeader>()
-	}
-
-	pub fn table_end_address(&self) -> usize {
-		self.header_start_address() + self.header.length as usize
+	// Return the table.
+	Self {
+		header: unsafe { &*header_ptr },
+		allocated_virtual_address: virtual_address,
+		allocated_length,
 	}
 }
 
+pub fn header_start_address(&self) -> usize {
+	self.header as *const _ as usize
+}
+
+pub fn table_start_address(&self) -> usize {
+	self.header_start_address() + mem::size_of::<AcpiSdtHeader>()
+}
+
+pub fn table_end_address(&self) -> usize {
+	self.header_start_address() + self.header.length as usize
+}
+}
+
 impl<'a> Drop for AcpiTable<'a> {
-	fn drop(&mut self) {
-		virtualmem::deallocate(self.allocated_virtual_address, self.allocated_length);
-	}
+fn drop(&mut self) {
+	virtualmem::deallocate(self.allocated_virtual_address, self.allocated_length);
+}
 }
 
 /// The ACPI Generic Address Structure (GAS).

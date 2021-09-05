@@ -98,6 +98,12 @@ pub fn total_memory_size() -> usize {
 	TOTAL_MEMORY.load(Ordering::SeqCst)
 }
 
+pub fn reserve(start_address: PhysAddr, size: usize) {
+	PHYSICAL_FREE_LIST.lock().reserve(start_address.as_usize(), size);
+	info!("Region {:X} - {:X} from physical address space has been reserved.", start_address, start_address + size);
+	print_information();
+}
+
 pub fn allocate(size: usize) -> Result<PhysAddr, AllocError> {
 	assert!(size > 0);
 	assert_eq!(

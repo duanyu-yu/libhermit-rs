@@ -48,6 +48,8 @@ pub mod switch;
 pub mod systemtime;
 #[cfg(feature = "vga")]
 mod vga;
+#[cfg(feature = "mmio")]
+pub mod mmio;
 
 const SERIAL_PORT_BAUDRATE: u32 = 115_200;
 

@@ -30,6 +30,51 @@ impl FreeList {
 		}
 	}
 
+	// remove the reserved region from freelist
+	pub fn reserve(&mut self, start: usize, size: usize) {
+		
+		trace!(
+			"Reserving {} bytes at {:#X} from Free List {:#X}",
+			size,
+			start,
+			self as *const Self as usize
+		);
+
+		let end = start + size;
+		let mut cursor = self.list.cursor_front_mut();
+
+		while let Some(node) = cursor.current() {
+			let (region_start, region_end) = (node.start, node.end);
+
+			if region_start < start {
+				// ----|---******--- : |---| = region from freelist; ****** = reserve
+				if region_end > start {
+					// ----|---****|**
+					node.end = start;
+
+					if region_end > end {
+						// ----|---******---|
+						let new_entry = FreeListEntry::new(end, region_end);
+						cursor.insert_before(new_entry);
+					}
+				} 
+
+			} else if region_start >= start && region_start <= end {
+				// ---***|****----
+				if region_end <= end {
+					// ----**|***|**
+					cursor.remove_current();
+				} else {
+					// ---***|****---|---
+					node.start = end;
+				}
+			}
+
+			cursor.move_next();
+		}
+
+	}	
+
 	pub fn allocate(&mut self, size: usize, alignment: Option<usize>) -> Result<usize, AllocError> {
 		trace!(
 			"Allocating {} bytes from Free List {:#X}",

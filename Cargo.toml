@@ -41,7 +41,7 @@ name = "measure_startup_time"
 harness = false
 
 [features]
-default = ["mmio","pci", "acpi", "fsgsbase", "smp", "aarch64-qemu-stdout"]
+default = ["mmio", "pci", "acpi", "fsgsbase", "smp", "aarch64-qemu-stdout"]
 mmio = []
 vga = []
 newlib = []

@@ -67,7 +67,6 @@ fn init_mmio_region() {
 	// let count = (MMIO_END - MMIO_START) / BasePageSize::SIZE;
 	// let flags = PageTableEntryFlags::empty();
 	// paging::map::<BasePageSize>(VirtAddr(MMIO_START as u64), PhysAddr(MMIO_START as u64), count, flags);
-	info!("after init mmio");
 }
 
 pub fn init() {

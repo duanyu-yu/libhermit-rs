@@ -1,7 +1,7 @@
 use crate::arch::x86_64::mm::paging::{BasePageSize, PageSize, PageTableEntryFlags};
 use crate::arch::x86_64::mm::{paging};
 use crate::arch::x86_64::mm::{PhysAddr, VirtAddr};
-use crate::paging::virt_to_phys;
+use crate::arch::x86_64::mm::paging::virt_to_phys;
 use core::{str};
 
 const MAGIC_VALUE: u32 = 0x74726976 as u32;

@@ -310,7 +310,7 @@ pub fn init() {
 	// Detect CPUs and APICs.
 	let local_apic_physical_address = detect_from_uhyve()
 		.or_else(|_e| detect_from_acpi())
-		.expect("HermitCore requires an APIC system");
+		.unwrap_or(PhysAddr(unsafe { rdmsr(x86::msr::IA32_APIC_BASE) })  );
 
 	// Initialize x2APIC or xAPIC, depending on what's available.
 	init_x2apic();
@@ -357,7 +357,9 @@ pub fn init() {
 	}
 
 	// init ioapic
-	init_ioapic();
+	if !(unsafe {IOAPIC_ADDRESS.is_zero()} ) {
+		init_ioapic();
+	}
 }
 
 fn init_ioapic() {

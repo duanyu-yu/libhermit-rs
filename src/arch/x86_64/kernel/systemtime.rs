@@ -225,19 +225,19 @@ pub fn get_boot_time() -> u64 {
 }
 
 pub fn init() {
-	let mut microseconds_offset = get_boot_time();
+	// let mut microseconds_offset = get_boot_time();
 
-	if microseconds_offset == 0 && !environment::is_uhyve() {
-		// Get the current time in microseconds since the epoch (1970-01-01) from the x86 RTC.
-		// Subtract the timer ticks to get the actual time when HermitCore-rs was booted.
-		let rtc = Rtc::new();
-		microseconds_offset = rtc.get_microseconds_since_epoch() - processor::get_timer_ticks();
-		unsafe { core::ptr::write_volatile(&mut (*BOOT_INFO).boot_gtod, microseconds_offset) }
-	}
+	// if microseconds_offset == 0 && !environment::is_uhyve() {
+	// 	// Get the current time in microseconds since the epoch (1970-01-01) from the x86 RTC.
+	// 	// Subtract the timer ticks to get the actual time when HermitCore-rs was booted.
+	// 	let rtc = Rtc::new();
+	// 	microseconds_offset = rtc.get_microseconds_since_epoch() - processor::get_timer_ticks();
+	// 	unsafe { core::ptr::write_volatile(&mut (*BOOT_INFO).boot_gtod, microseconds_offset) }
+	// }
 
-	let (year, month, day, hour, minute, second) = date_from_microseconds(microseconds_offset);
-	info!(
-		"HermitCore-rs booted on {:04}-{:02}-{:02} at {:02}:{:02}:{:02}",
-		year, month, day, hour, minute, second
-	);
+	// let (year, month, day, hour, minute, second) = date_from_microseconds(microseconds_offset);
+	// info!(
+	// 	"HermitCore-rs booted on {:04}-{:02}-{:02} at {:02}:{:02}:{:02}",
+	// 	year, month, day, hour, minute, second
+	// );
 }

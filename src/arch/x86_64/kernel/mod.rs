@@ -402,6 +402,8 @@ pub fn boot_processor_init() {
 	scheduler::install_timer_handler();
 	finish_processor_init();
 	irq::enable();
+
+	mmio::detect_network();
 }
 
 /// Boots all available Application Processors on bare-metal or QEMU.

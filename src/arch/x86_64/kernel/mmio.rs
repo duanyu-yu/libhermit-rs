@@ -178,12 +178,12 @@ pub fn detect_mmio(start_address: PhysAddr, end_address: PhysAddr) -> Result<&'s
 
 /// Tries to find the network device within the specified address range.
 /// Returns a reference to it within the Ok() if successful or an Err() on failure.
-pub fn detect_network(start_address: PhysAddr, end_address: PhysAddr) -> Result<&'static MMIO, &'static str> {
+pub fn detect_network() -> Result<&'static MMIO, &'static str> {
     // Trigger page mapping in the first iteration!
 	let mut current_page = 0;
 
     // Look for the device-ID in all possible 64-byte aligned addresses within this range.
-    for current_address in (start_address.as_usize()..end_address.as_usize()).step_by(512) {
+    for current_address in (MMIO_START..MMIO_END).step_by(512) {
         info!("detecting MMIO at {:#X}", current_address);
         // Have we crossed a page boundary in the last iteration?
         // info!("before the {}. paging", current_page);

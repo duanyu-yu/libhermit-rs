@@ -16,26 +16,40 @@ pub struct MMIO {
     version: u32,
     device_id: u32,
     vendor_id: u32,
-    device_features: u32,
-    device_features_sel: u32,
-    driver_features: u32,
-    driver_features_sel: u32,
+
+    host_features: u32, // legacy only
+    host_features_sel: [u32; 3], // legacy only
+    guest_features: u32, // legacy only
+    guest_features_sel: u32, // legacy only
+    guest_page_size: [u32; 2], // legacy only
+    // device_features: u32, // non-legacy only
+    // device_features_sel: u32, // non-legacy only 
+    // driver_features: u32, // non-legacy only
+    // driver_features_sel: u32, // non-legacy only
+
     queue_sel: u32,
     queue_num_max: u32,
     queue_num: u32,
-    queue_ready: u32,
-    queue_notify: u32,
+
+    // queue_ready: u32, // non-legacy only
+    queue_align: u32, // legacy only
+    queue_pfn: [u32; 4], // legacy only
+    
+    queue_notify: [u32; 4],
+
     interrupt_status: u32,
-    interrupt_ack: u32,
-    status: u32,
-    // queue_desc_low: u32,
-    // queue_desc_high: u32,
-    // queue_avai_low: u32,
-    // queue_avai_high: u32,
-    // queue_used_low: u32,
-    // queue_used_high: u32,
-    // config_generation: u32,
-    // config: u32,
+    interrupt_ack: [u32; 3], 
+    status: [u32; 36],
+
+    // queue_desc_low: u32, // non-legacy only
+    // queue_desc_high: u32, // non-legacy only 
+    // queue_avai_low: u32, // non-legacy only
+    // queue_avai_high: u32, // non-legacy only
+    // queue_used_low: u32, // non-legacy only
+    // queue_used_high: u32, // non-legacy only
+    // config_generation: u32, // non-legacy only
+
+    config: [u32; 64],
 }
 
 impl MMIO {
@@ -48,79 +62,64 @@ impl MMIO {
     }
 
     fn device_id(&self) -> u32 {
-            self.device_id
+        self.device_id
     }
 
     fn vendor_id(&self) -> u32 {
         self.vendor_id
     }
 
-    fn device_features(&self) -> u32 {
-        self.device_features
-    }
-
-    fn device_features_sel(&self) -> u32 {
-        self.device_features_sel
-    }
-
-    fn driver_features(&self) -> u32 {
-        self.driver_features
-    }
-
-    fn driver_features_sel(&self) -> u32 {
-        self.driver_features_sel
-    }
-
-    fn queue_sel(&self) -> u32 {
-        self.queue_sel
+    fn host_features(&self) -> u32 {
+        self.host_features
     }
 
     fn queue_num_max(&self) -> u32 {
         self.queue_num_max
     }
 
-    fn queue_num(&self) -> u32 {
-        self.queue_num
-    }
-
-    fn queue_ready(&self) -> u32 {
-        self.queue_ready
-    }
-
-    fn queue_notify(&self) -> u32 {
-        self.queue_notify
+    fn queue_pfn(&self) -> [u32; 4] {
+        self.queue_pfn
     }
 
     fn interrupt_status(&self) -> u32 {
         self.interrupt_status
     }
 
-    fn interrupt_ack(&self) -> u32 {
-        self.interrupt_ack
+    fn status(&self) -> [u32; 36] {
+        self.status
     }
 
-    fn status(&self) -> u32 {
-        self.status
+    fn config(&self) -> [u32; 64] {
+        self.config
     }
 
     fn print_information(&self) {
         infoheader!(" MMIO INFORMATION ");
 
-        infoentry!("Device version number", "{:#X}", self.version);
+        infoentry!("Device version", "{:#X}", self.version);
         infoentry!("Device ID", "{:#X}", self.device_id);
         infoentry!("Vendor ID", "{:#X}", self.vendor_id);
-        infoentry!("Device Features", "{:#X}", self.device_features);
-        infoentry!("Device Features selection", "{:#X}", self.device_features_sel);
-        infoentry!("Driver Features", "{:#X}", self.driver_features);
-        infoentry!("Driver Features selection", "{:#X}", self.driver_features_sel);
+
+        infoentry!("Host Features", "{:#X}", self.host_features);
+        infoentry!("Host Features selection", "{:#X?}", self.host_features_sel);
+        infoentry!("Guest Features", "{:#X}", self.guest_features);
+        infoentry!("Guest Features selection", "{:#X}", self.guest_features_sel);
+        infoentry!("Guest Page Size", "{:#X?}", self.guest_page_size);
+
         infoentry!("Virtual queue index", "{:#X}", self.queue_sel);
-        infoentry!("Maximum virtual queue size", "{:#X}", self.queue_num_max);
+        infoentry!("Maximum queue size", "{:#X}", self.queue_num_max);
         infoentry!("Virtual queue size", "{:#X}", self.queue_num);
-        infoentry!("Virtual queue ready bit", "{:#X}", self.queue_ready);
-        infoentry!("Queue notifier", "{:#X}", self.queue_notify);
+
+        infoentry!("Queue alignment", "{:#X}", self.queue_align);
+        infoentry!("Physical page number", "{:#X?}", self.queue_pfn);
+
+        infoentry!("Queue notifier", "{:#X?}", self.queue_notify);
+
         infoentry!("Interrupt status", "{:#X}", self.interrupt_status);
-        infoentry!("Interrupt acknowledge", "{:#X}", self.interrupt_ack);
-        infoentry!("Device status", "{:#X}", self.status);
+        infoentry!("Interrupt acknowledge", "{:#X?}", self.interrupt_ack);
+        infoentry!("Device status", "{:#X?}", self.status);
+
+        infoentry!("Configuration space", "{:#X?}", self.config);
 
         infofooter!();
     }

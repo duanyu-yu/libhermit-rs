@@ -100,6 +100,54 @@ impl MMIO {
         self.config
     }
 
+    fn set_host_features_sel(&mut self, sel: u32) {
+        self.host_features_sel = sel;
+    } 
+
+    fn set_guest_features(&mut self, features: u32) {
+        self.guest_features = features;
+    }
+
+    fn set_guest_features_sel(&mut self, sel: u32) {
+        self.guest_features_sel = sel;
+    }
+
+    fn set_guest_page_size(&mut self, pagesize: u32) {
+        self.guest_page_size = pagesize;
+    }
+
+    fn set_queue_sel(&mut self, sel: u32) {
+        self.queue_sel = sel;
+    }
+
+    fn set_queue_num(&mut self, queue_num: u32) {
+        self.queue_num = queue_num;
+    }
+
+    fn set_queue_align(&mut self, queue_align: u32) {
+        self.queue_align = queue_align;
+    }
+
+    fn set_queue_pfn(&mut self, queue_pfn: u32) {
+        self.queue_pfn = queue_pfn;
+    }
+
+    fn set_queue_notify(&mut self, queue_notify: u32) {
+        self.queue_notify = queue_notify;
+    }
+
+    fn set_interrupt_ack(&mut self, interrupt_ack: u32) {
+        self.interrupt_ack = interrupt_ack;
+    }
+
+    fn set_status(&mut self, status: u32) {
+        self.status = status;
+    }
+
+    fn set_config(&mut self, config: [u32; 64]) {
+        self.config = config;
+    }
+
     fn print_information(&self) {
         infoheader!(" MMIO INFORMATION ");
 

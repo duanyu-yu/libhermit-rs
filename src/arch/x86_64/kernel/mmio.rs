@@ -126,7 +126,7 @@ impl MMIO {
         infoentry!("Interrupt acknowledge", "{:#X}", self.interrupt_ack);
         infoentry!("Device status", "{:#X}", self.status);
 
-        infoentry!("Configuration space", "{:#X?}", self.config());
+        infoentry!("Configuration space", "{:#X?}", self.config);
 
         infofooter!();
     }

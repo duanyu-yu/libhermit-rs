@@ -289,3 +289,62 @@ pub fn detect_network() -> Result<&'static MMIO, &'static str> {
 
     Err("Network card not found!")
 }
+
+pub fn test_write(queue_pfn: u32) {
+    // Trigger page mapping in the first iteration!
+	let mut current_page = 0;
+
+    // Look for the device-ID in all possible 64-byte aligned addresses within this range.
+    for current_address in (MMIO_START..MMIO_END).step_by(512) {
+        info!("detecting MMIO at {:#X}", current_address);
+        // Have we crossed a page boundary in the last iteration?
+        // info!("before the {}. paging", current_page);
+        if current_address / BasePageSize::SIZE > current_page {
+            let mut flags = PageTableEntryFlags::empty();
+	        flags.normal().writable();
+	        paging::map::<BasePageSize>(
+		        VirtAddr::from(align_down!(current_address, BasePageSize::SIZE)),
+		        PhysAddr::from(align_down!(current_address, BasePageSize::SIZE)),
+		        1,
+		        flags,
+	        );
+
+			current_page = current_address / BasePageSize::SIZE;
+
+			info!("map {:#X} to {:#X}", current_address, virt_to_phys(VirtAddr::from(align_down!(current_address, BasePageSize::SIZE))).as_u64());
+		}   
+
+        // Verify the first register value to find out if this is really an MMIO magic-value.
+        let mmio = unsafe { &mut *(current_address as *mut MMIO) };
+
+        let magic = mmio.magic_value();
+
+        if magic != MAGIC_VALUE {
+            info!("It's not a MMIO-device at {:#X}", current_address);
+            continue;
+        }
+
+		// We found a MMIO-device (whose 512-bit address in this structure).  
+        info!(
+            "Found a MMIO-device at {:#X}",
+            current_address
+        );
+
+         // Verify the device-ID to find the network card
+        let id = mmio.device_id();
+
+        if id != 0x1 {
+            info!("It's not a network card at {:#X}", current_address);
+            continue;
+        }
+
+        info!("Found network card at {:#X}", current_address);
+
+        mmio.print_information();
+        
+        // test write the queue_pfn register
+        mmio.set_queue_pfn(queue_pfn);
+
+        mmio.print_information();
+    }
+}

@@ -13,10 +13,10 @@ pub const MMIO_END: usize = 0x00000000c0000fff as usize;
 /// The Layout of MMIO Device 
 #[repr(C, align(4))]
 pub struct MMIO {
-    magic_value: u32,
-    version: u32,
-    device_id: u32,
-    vendor_id: u32,
+    pub magic_value: u32,
+    pub version: u32,
+    pub device_id: u32,
+    pub vendor_id: u32,
 
     host_features: u32, // legacy only
     host_features_sel: u32, // legacy only

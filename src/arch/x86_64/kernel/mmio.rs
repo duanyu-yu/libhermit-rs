@@ -18,98 +18,57 @@ pub struct MMIO {
     pub device_id: u32,
     pub vendor_id: u32,
 
-    host_features: u32, // legacy only
-    host_features_sel: u32, // legacy only
+    pub device_features: u32, 
+    device_features_sel: u32, 
     _reserved0: [u32; 2],
-    guest_features: u32, // legacy only
-    guest_features_sel: u32, // legacy only
+    driver_features: u32, 
+    driver_features_sel: u32, 
+
     guest_page_size: u32, // legacy only
     _reserved1: u32,
-    // device_features: u32, // non-legacy only
-    // device_features_sel: u32, // non-legacy only 
-    // driver_features: u32, // non-legacy only
-    // driver_features_sel: u32, // non-legacy only
 
     queue_sel: u32,
-    queue_num_max: u32,
+    pub queue_num_max: u32,
     queue_num: u32,
-
-    // queue_ready: u32, // non-legacy only
     queue_align: u32, // legacy only
-    queue_pfn: u32, // legacy only
-    _reserved2: [u32; 3],
-    
+    pub queue_pfn: u32, // legacy only
+    pub queue_ready: u32, // non-legacy only
+    _reserved2: [u32; 2],
     queue_notify: u32,
     _reserved3: [u32; 3],
 
-    interrupt_status: u32,
+    pub interrupt_status: u32,
     interrupt_ack: u32, 
     _reserved4: [u32; 2],
-    status: u32,
-    _reserved5: [u32; 35],
 
-    // queue_desc_low: u32, // non-legacy only
-    // queue_desc_high: u32, // non-legacy only 
-    // queue_avai_low: u32, // non-legacy only
-    // queue_avai_high: u32, // non-legacy only
-    // queue_used_low: u32, // non-legacy only
-    // queue_used_high: u32, // non-legacy only
-    // config_generation: u32, // non-legacy only
+    pub status: u32,
+    _reserved5: [u32; 3],
 
-    config: [u32; 64],
+    queue_desc_low: u32, // non-legacy only
+    queue_desc_high: u32, // non-legacy only 
+    _reserved6: [u32; 2],
+    queue_driver_low: u32, // non-legacy only
+    queue_driver_high: u32, // non-legacy only
+    _reserved7: [u32; 2],
+    queue_device_low: u32, // non-legacy only
+    queue_device_high: u32, // non-legacy only
+    _reserved8: [u32; 21],
+    
+    pub config_generation: u32, // non-legacy only
+    pub config: [u32; 64],
 }
 
 impl MMIO {
-    fn magic_value(&self) -> u32 {
-        self.magic_value
-    }
-
-    fn version(&self) -> u32 {
-        self.version
-    }
-
-    fn device_id(&self) -> u32 {
-        self.device_id
-    }
-
-    fn vendor_id(&self) -> u32 {
-        self.vendor_id
-    }
-
-    fn host_features(&self) -> u32 {
-        self.host_features
-    }
-
-    fn queue_num_max(&self) -> u32 {
-        self.queue_num_max
-    }
-
-    fn queue_pfn(&self) -> u32 {
-        self.queue_pfn
-    }
-
-    fn interrupt_status(&self) -> u32 {
-        self.interrupt_status
-    }
-
-    fn status(&self) -> u32 {
-        self.status
-    }
-
-    fn config(&self) -> [u32; 64] {
-        self.config
-    }
-
-    fn set_host_features_sel(&mut self, sel: u32) {
-        self.host_features_sel = sel;
+    fn set_device_features_sel(&mut self, sel: u32) {
+        self.device_features_sel = sel;
     } 
 
-    fn set_guest_features(&mut self, features: u32) {
-        self.guest_features = features;
+    fn set_driver_features(&mut self, features: u32) {
+        self.driver_features = features;
     }
 
-    fn set_guest_features_sel(&mut self, sel: u32) {
-        self.guest_features_sel = sel;
+    fn set_driver_features_sel(&mut self, sel: u32) {
+        self.driver_features_sel = sel;
     }
 
     fn set_guest_page_size(&mut self, pagesize: u32) {
@@ -132,6 +91,10 @@ impl MMIO {
         self.queue_pfn = queue_pfn;
     }
 
+    fn set_queue_ready(&mut self, ready: u32) {
+        self.queue_ready = ready;
+    }
+
     fn set_queue_notify(&mut self, queue_notify: u32) {
         self.queue_notify = queue_notify;
     }
@@ -142,6 +105,34 @@ impl MMIO {
 
     fn set_status(&mut self, status: u32) {
         self.status = status;
+    }
+
+    fn set_queue_desc_low(&mut self, desc_low: u32) {
+        self.queue_desc_low = desc_low;
+    }
+
+    fn set_queue_desc_high(&mut self, desc_high: u32) {
+        self.queue_desc_high = desc_high;
+    }    
+
+    fn set_queue_driver_low(&mut self, driver_low: u32) {
+        self.queue_driver_low = driver_low;
+    }
+
+    fn set_queue_driver_high(&mut self, driver_high: u32) {
+        self.queue_driver_high = driver_high;
+    }
+
+    fn set_queue_device_low(&mut self, device_low: u32) {
+        self.queue_device_low = device_low;
+    }
+
+    fn set_queue_device_high(&mut self, device_high: u32) {
+        self.queue_device_high = device_high;
+    }
+
+    fn set_config_generation(&mut self, generation: u32) {
+        self.config_generation = generation;
     }
 
     fn set_config(&mut self, config: [u32; 64]) {
@@ -155,25 +146,34 @@ impl MMIO {
         infoentry!("Device ID", "{:#X}", self.device_id);
         infoentry!("Vendor ID", "{:#X}", self.vendor_id);
 
-        infoentry!("Host Features", "{:#X}", self.host_features);
-        infoentry!("Host Features selection", "{:#X}", self.host_features_sel);
-        infoentry!("Guest Features", "{:#X}", self.guest_features);
-        infoentry!("Guest Features selection", "{:#X}", self.guest_features_sel);
+        infoentry!("Device Features", "{:#X}", self.device_features);
+        infoentry!("Device Features selection", "{:#X}", self.device_features_sel);
+        infoentry!("Driver Features", "{:#X}", self.driver_features);
+        infoentry!("Driver Features selection", "{:#X}", self.driver_features_sel);
+
         infoentry!("Guest Page Size", "{:#X}", self.guest_page_size);
 
         infoentry!("Virtual queue index", "{:#X}", self.queue_sel);
         infoentry!("Maximum queue size", "{:#X}", self.queue_num_max);
         infoentry!("Virtual queue size", "{:#X}", self.queue_num);
-
         infoentry!("Queue alignment", "{:#X}", self.queue_align);
         infoentry!("Physical page number", "{:#X}", self.queue_pfn);
-
+        infoentry!("Queue Ready", "{:#X}", self.queue_ready);
         infoentry!("Queue notifier", "{:#X}", self.queue_notify);
 
         infoentry!("Interrupt status", "{:#X}", self.interrupt_status);
         infoentry!("Interrupt acknowledge", "{:#X}", self.interrupt_ack);
+
         infoentry!("Device status", "{:#X}", self.status);
 
+        infoentry!("Queue Desc Low", "{:#X}", self.queue_desc_low);
+        infoentry!("Queue Desc High", "{:#X}", self.queue_desc_high);
+        infoentry!("Queue Driver Low", "{:#X}", self.queue_driver_low);
+        infoentry!("Queue Driver High", "{:#X}", self.queue_driver_high);
+        infoentry!("Queue Device Low", "{:#X}", self.queue_device_low);
+        infoentry!("Queue Device High", "{:#X}", self.queue_device_high);
+
+        infoentry!("Config atomicity value", "{:#X}", self.config_generation);
         infoentry!("Configuration space", "{:#X?}", self.config);
 
         infofooter!();
@@ -209,7 +209,7 @@ pub fn detect_mmio(start_address: PhysAddr, end_address: PhysAddr) -> Result<&'s
         // Verify the first register value to find out if this is really an MMIO magic-value.
         let mmio = unsafe { &*(current_address as *const MMIO) };
 
-        let magic = mmio.magic_value();
+        let magic = mmio.magic_value;
 
         // info!("The magic_value at {:#X} is {:#X}", current_address, magic);
 
@@ -259,7 +259,7 @@ pub fn detect_network() -> Result<&'static MMIO, &'static str> {
         // Verify the first register value to find out if this is really an MMIO magic-value.
         let mmio = unsafe { &*(current_address as *const MMIO) };
 
-        let magic = mmio.magic_value();
+        let magic = mmio.magic_value;
 
         if magic != MAGIC_VALUE {
             info!("It's not a MMIO-device at {:#X}", current_address);
@@ -273,7 +273,7 @@ pub fn detect_network() -> Result<&'static MMIO, &'static str> {
         );
 
         // Verify the device-ID to find the network card
-        let id = mmio.device_id();
+        let id = mmio.device_id;
 
         if id != 0x1 {
             info!("It's not a network card at {:#X}", current_address);

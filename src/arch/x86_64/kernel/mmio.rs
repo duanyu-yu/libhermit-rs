@@ -31,12 +31,12 @@ pub struct MMIO {
     // driver_features_sel: u32, // non-legacy only
 
     queue_sel: u32,
-    queue_num_max: u32,
+    pub queue_num_max: u32,
     queue_num: u32,
 
     // queue_ready: u32, // non-legacy only
     queue_align: u32, // legacy only
-    queue_pfn: u32, // legacy only
+    pub queue_pfn: u32, // legacy only
     _reserved2: [u32; 3],
     
     queue_notify: u32,
@@ -116,11 +116,11 @@ impl MMIO {
         self.guest_page_size = pagesize;
     }
 
-    fn set_queue_sel(&mut self, sel: u32) {
+    pub fn set_queue_sel(&mut self, sel: u32) {
         self.queue_sel = sel;
     }
 
-    fn set_queue_num(&mut self, queue_num: u32) {
+    pub fn set_queue_num(&mut self, queue_num: u32) {
         self.queue_num = queue_num;
     }
 

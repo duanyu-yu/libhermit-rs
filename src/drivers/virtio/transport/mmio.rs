@@ -7,6 +7,8 @@
 
 use crate::arch::kernel::mmio as kernel_mmio;
 use crate::arch::kernel::mmio::{MMIO, MAGIC_VALUE};
+use crate::arch::x86_64::mm::virtualmem;
+use crate::arch::x86_64::mm::paging::BasePageSize;
 
 #[repr(u32)]
 pub enum DevId {
@@ -40,4 +42,32 @@ pub fn init_device(mmio: &MMIO) {
     assert_eq!(mmio.version, 0x1 as u32);
 
     
+}
+
+pub fn init_virtqueue(mmio: &MMIO, index: u32) -> Result<&'static MMIO, &'static str> {
+    mmio.set_queue_sel(index);
+
+    assert_eq!(
+        mmio.queue_pfn,
+        0x0 as u32,
+        "The queue {} is already in use!",
+        index
+    );
+
+    let const queue_num_max = mmio.queue_num_max;   
+    if queue_num_max == 0x0 as u32 {
+        Err("The queue {} is not available", index)
+    }
+
+    let const queue_num = queue_num_max;
+    assert!(
+        queue_num <= queue_num_max, 
+        "The queue size should smaller than or equal to {}",
+        queue_num_max
+    );
+
+    let queue_addr = virtualmem::allocate_aligned(queue_num * BasePageSize::SIZE, BasePageSize::SIZE).unwrap();
+
+    mmio.set_queue_num(queue_num);
+    mmio.set_queue_align(BasePageSize::SIZE);
 }

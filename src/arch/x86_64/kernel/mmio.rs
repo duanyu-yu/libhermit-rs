@@ -56,7 +56,7 @@ pub struct MMIO {
     // queue_used_high: u32, // non-legacy only
     // config_generation: u32, // non-legacy only
 
-    config: [u32; 64],
+    config: [u32; 3],
 }
 
 impl MMIO {
@@ -96,55 +96,67 @@ impl MMIO {
         self.status
     }
 
-    fn config(&self) -> [u32; 64] {
+    fn config(&self) -> [u32; 3] {
         self.config
     }
 
     fn set_host_features_sel(&mut self, sel: u32) {
+        info!("writing {:#X} to register HostFeaturesSel", sel);
         self.host_features_sel = sel;
     } 
 
     fn set_guest_features(&mut self, features: u32) {
+        info!("writing {:#X} to register GuestFeatures", features);
         self.guest_features = features;
     }
 
     fn set_guest_features_sel(&mut self, sel: u32) {
+        info!("writing {:#X} to register GuestFeaturesSel", sel);
         self.guest_features_sel = sel;
     }
 
     fn set_guest_page_size(&mut self, pagesize: u32) {
+        info!("writing {:#X} to register GuestPageSize", pagesize);
         self.guest_page_size = pagesize;
     }
 
     fn set_queue_sel(&mut self, sel: u32) {
+        info!("writing {:#X} to register QueueSel", sel);
         self.queue_sel = sel;
     }
 
     fn set_queue_num(&mut self, queue_num: u32) {
+        info!("writing {:#X} to register QueueNum", queue_num);
         self.queue_num = queue_num;
     }
 
     fn set_queue_align(&mut self, queue_align: u32) {
+        info!("writing {:#X} to register QueueAlign", queue_align);
         self.queue_align = queue_align;
     }
 
     fn set_queue_pfn(&mut self, queue_pfn: u32) {
+        info!("writing {:#X} to register QueuePFN", queue_pfn);
         self.queue_pfn = queue_pfn;
     }
 
     fn set_queue_notify(&mut self, queue_notify: u32) {
+        info!("writing {:#X} to register QueueNotify", queue_notify);
         self.queue_notify = queue_notify;
     }
 
     fn set_interrupt_ack(&mut self, interrupt_ack: u32) {
+        info!("writing {:#X} to register InterruptACK", interrupt_ack);
         self.interrupt_ack = interrupt_ack;
     }
 
     fn set_status(&mut self, status: u32) {
+        info!("writing {:#X} to register Status", status);
         self.status = status;
     }
 
-    fn set_config(&mut self, config: [u32; 64]) {
+    fn set_config(&mut self, config: [u32; 3]) {
+        info!("writing {:#X?} to register Config", config);
         self.config = config;
     }
 
@@ -290,7 +302,7 @@ pub fn detect_network() -> Result<&'static MMIO, &'static str> {
     Err("Network card not found!")
 }
 
-pub fn test_write(queue_pfn: u32) {
+pub fn test_write(val: u32) {
     // Trigger page mapping in the first iteration!
 	let mut current_page = 0;
 
@@ -343,7 +355,11 @@ pub fn test_write(queue_pfn: u32) {
         mmio.print_information();
         
         // test write the queue_pfn register
-        mmio.set_queue_pfn(queue_pfn);
+        mmio.set_queue_sel(val);
+        mmio.set_queue_num(val);
+        mmio.set_queue_align(val);
+        mmio.set_queue_pfn(val);
+        mmio.set_queue_notify(val);
 
         mmio.print_information();
     }

@@ -403,7 +403,7 @@ pub fn boot_processor_init() {
 	finish_processor_init();
 	irq::enable();
 
-	mmio::detect_network();
+	mmio::test_write(1 as u32);
 }
 
 /// Boots all available Application Processors on bare-metal or QEMU.

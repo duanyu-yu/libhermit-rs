@@ -72,22 +72,27 @@ impl MMIO {
     }
 
     fn set_guest_page_size(&mut self, pagesize: u32) {
+        info!("writing {:#X} to register GuestPageSize", pagesize);
         self.guest_page_size = pagesize;
     }
 
     fn set_queue_sel(&mut self, sel: u32) {
+        info!("writing {:#X} to register QueueSel", sel);
         self.queue_sel = sel;
     }
 
     fn set_queue_num(&mut self, queue_num: u32) {
+        info!("writing {:#X} to register QueueNum", queue_num);
         self.queue_num = queue_num;
     }
 
     fn set_queue_align(&mut self, queue_align: u32) {
+        info!("writing {:#X} to register QueueAlign", queue_align);
         self.queue_align = queue_align;
     }
 
     fn set_queue_pfn(&mut self, queue_pfn: u32) {
+        info!("writing {:#X} to register QueuePFN", queue_pfn);
         self.queue_pfn = queue_pfn;
     }
 
@@ -96,46 +101,22 @@ impl MMIO {
     }
 
     fn set_queue_notify(&mut self, queue_notify: u32) {
+        info!("writing {:#X} to register QueueNotify", queue_notify);
         self.queue_notify = queue_notify;
     }
 
     fn set_interrupt_ack(&mut self, interrupt_ack: u32) {
+        info!("writing {:#X} to register InterruptACK", interrupt_ack);
         self.interrupt_ack = interrupt_ack;
     }
 
     fn set_status(&mut self, status: u32) {
+        info!("writing {:#X} to register Status", status);
         self.status = status;
     }
 
-    fn set_queue_desc_low(&mut self, desc_low: u32) {
-        self.queue_desc_low = desc_low;
-    }
-
-    fn set_queue_desc_high(&mut self, desc_high: u32) {
-        self.queue_desc_high = desc_high;
-    }    
-
-    fn set_queue_driver_low(&mut self, driver_low: u32) {
-        self.queue_driver_low = driver_low;
-    }
-
-    fn set_queue_driver_high(&mut self, driver_high: u32) {
-        self.queue_driver_high = driver_high;
-    }
-
-    fn set_queue_device_low(&mut self, device_low: u32) {
-        self.queue_device_low = device_low;
-    }
-
-    fn set_queue_device_high(&mut self, device_high: u32) {
-        self.queue_device_high = device_high;
-    }
-
-    fn set_config_generation(&mut self, generation: u32) {
-        self.config_generation = generation;
-    }
-
-    fn set_config(&mut self, config: [u32; 64]) {
+    fn set_config(&mut self, config: [u32; 3]) {
+        info!("writing {:#X?} to register Config", config);
         self.config = config;
     }
 
@@ -288,4 +269,67 @@ pub fn detect_network() -> Result<&'static MMIO, &'static str> {
     }
 
     Err("Network card not found!")
+}
+
+pub fn test_write(val: u32) {
+    // Trigger page mapping in the first iteration!
+	let mut current_page = 0;
+
+    // Look for the device-ID in all possible 64-byte aligned addresses within this range.
+    for current_address in (MMIO_START..MMIO_END).step_by(512) {
+        info!("detecting MMIO at {:#X}", current_address);
+        // Have we crossed a page boundary in the last iteration?
+        // info!("before the {}. paging", current_page);
+        if current_address / BasePageSize::SIZE > current_page {
+            let mut flags = PageTableEntryFlags::empty();
+	        flags.normal().writable();
+	        paging::map::<BasePageSize>(
+		        VirtAddr::from(align_down!(current_address, BasePageSize::SIZE)),
+		        PhysAddr::from(align_down!(current_address, BasePageSize::SIZE)),
+		        1,
+		        flags,
+	        );
+
+			current_page = current_address / BasePageSize::SIZE;
+
+			info!("map {:#X} to {:#X}", current_address, virt_to_phys(VirtAddr::from(align_down!(current_address, BasePageSize::SIZE))).as_u64());
+		}   
+
+        // Verify the first register value to find out if this is really an MMIO magic-value.
+        let mmio = unsafe { &mut *(current_address as *mut MMIO) };
+
+        let magic = mmio.magic_value();
+
+        if magic != MAGIC_VALUE {
+            info!("It's not a MMIO-device at {:#X}", current_address);
+            continue;
+        }
+
+		// We found a MMIO-device (whose 512-bit address in this structure).  
+        info!(
+            "Found a MMIO-device at {:#X}",
+            current_address
+        );
+
+         // Verify the device-ID to find the network card
+        let id = mmio.device_id();
+
+        if id != 0x1 {
+            info!("It's not a network card at {:#X}", current_address);
+            continue;
+        }
+
+        info!("Found network card at {:#X}", current_address);
+
+        mmio.print_information();
+        
+        // test write the queue_pfn register
+        mmio.set_queue_sel(val);
+        mmio.set_queue_num(val);
+        mmio.set_queue_align(val);
+        mmio.set_queue_pfn(val);
+        mmio.set_queue_notify(val);
+
+        mmio.print_information();
+    }
 }

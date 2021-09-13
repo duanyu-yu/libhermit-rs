@@ -60,14 +60,17 @@ pub struct MMIO {
 
 impl MMIO {
     fn set_device_features_sel(&mut self, sel: u32) {
+        info!("writing {:#X} to register DeviceFeaturesSel", sel);
         self.device_features_sel = sel;
     } 
 
     fn set_driver_features(&mut self, features: u32) {
+        info!("writing {:#X} to register DriverFeatures", features);
         self.driver_features = features;
     }
 
     fn set_driver_features_sel(&mut self, sel: u32) {
+        info!("writing {:#X} to register DriverFeaturesSel", sel);
         self.driver_features_sel = sel;
     }
 
@@ -322,6 +325,11 @@ pub fn test_write(val: u32) {
         info!("Found network card at {:#X}", current_address);
 
         mmio.print_information();
+
+        mmio.set_device_features_sel(val);
+        mmio.set_driver_features(val);
+        mmio.set_driver_features_sel(val);
+        mmio.set_guest_page_size(val);
         
         // test write the queue_pfn register
         mmio.set_queue_sel(val);
@@ -329,6 +337,9 @@ pub fn test_write(val: u32) {
         mmio.set_queue_align(val);
         mmio.set_queue_pfn(val);
         mmio.set_queue_notify(val);
+
+        mmio.set_interrupt_ack(val);
+        mmio.set_status(val);
 
         mmio.print_information();
     }

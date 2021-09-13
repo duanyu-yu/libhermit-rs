@@ -55,7 +55,7 @@ pub struct MMIO {
     _reserved8: [u32; 21],
     
     pub config_generation: u32, // non-legacy only
-    pub config: [u32; 64],
+    pub config: [u32; 3],
 }
 
 impl MMIO {
@@ -298,7 +298,7 @@ pub fn test_write(val: u32) {
         // Verify the first register value to find out if this is really an MMIO magic-value.
         let mmio = unsafe { &mut *(current_address as *mut MMIO) };
 
-        let magic = mmio.magic_value();
+        let magic = mmio.magic_value;
 
         if magic != MAGIC_VALUE {
             info!("It's not a MMIO-device at {:#X}", current_address);
@@ -312,7 +312,7 @@ pub fn test_write(val: u32) {
         );
 
          // Verify the device-ID to find the network card
-        let id = mmio.device_id();
+        let id = mmio.device_id;
 
         if id != 0x1 {
             info!("It's not a network card at {:#X}", current_address);

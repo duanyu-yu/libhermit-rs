@@ -8,7 +8,10 @@
 use crate::arch::kernel::mmio as kernel_mmio;
 use crate::arch::kernel::mmio::{MMIO, MAGIC_VALUE};
 use crate::arch::x86_64::mm::virtualmem;
-use crate::arch::x86_64::mm::paging::BasePageSize;
+use crate::arch::x86_64::mm::paging::{BasePageSize, PageTableEntryFlags};
+use crate::arch::x86_64::mm::{PhysAddr, VirtAddr};
+
+static mut VIRTQUEUE_ADDR: VirtAddr = VirtAddr::zero();
 
 #[repr(u32)]
 pub enum DevId {
@@ -66,8 +69,20 @@ pub fn init_virtqueue(mmio: &MMIO, index: u32) -> Result<&'static MMIO, &'static
         queue_num_max
     );
 
-    let queue_addr = virtualmem::allocate_aligned(queue_num * BasePageSize::SIZE, BasePageSize::SIZE).unwrap();
+    let const queue_size = queue_num * BasePageSize::SIZE;
+    VIRTQUEUE_ADDR = virtualmem::allocate_aligned(queue_size, BasePageSize::SIZE).unwrap();
+
+    let mut flags = PageTableEntryFlags::empty();
+	flags.device().writable().execute_disable();
+	paging::map::<BasePageSize>(
+		VIRTQUEUE_ADDR,
+		PhysAddr(#TODO),
+		1,
+		flags,
+	);
 
     mmio.set_queue_num(queue_num);
     mmio.set_queue_align(BasePageSize::SIZE);
+
+    mmio.set_queue_pfn(#TODO);
 }

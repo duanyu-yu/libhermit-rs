@@ -7,6 +7,7 @@
 
 #![allow(clippy::vec_box)]
 
+#[cfg(feature = "pci")]
 use crate::arch::kernel::pci::{self, PciAdapter};
 
 use crate::arch::mm::paging;

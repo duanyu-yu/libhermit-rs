@@ -11,4 +11,8 @@
 //! Other mechanisms (MMIO and Channel I/O) are currently not
 //! supported.
 
+#[cfg(feature = "pci")]
 pub mod pci;
+
+#[cfg(feature = "mmio")]
+pub mod mmio;

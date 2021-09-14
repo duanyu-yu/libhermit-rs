@@ -19,6 +19,12 @@ pub mod net;
 #[cfg(all(feature = "pci", not(target_arch = "aarch64")))]
 pub mod virtio;
 
+#[cfg(all(feature = "mmio", not(target_arch = "aarch64")))]
+pub mod net;
+
+#[cfg(all(feature = "mmio", not(target_arch = "aarch64")))]
+pub mod virtio;
+
 /// A common error module for drivers.
 /// [DriverError](enums.drivererror.html) values will be
 /// passed on to higher layers.

@@ -11,7 +11,10 @@
 
 use self::error::VqPackedError;
 use super::super::features::Features;
+
+#[cfg(feature = "pci")]
 use super::super::transport::pci::{ComCfg, NotifCfg, NotifCtrl};
+
 use super::error::VirtqError;
 use super::{
 	AsSliceU8, BuffSpec, Buffer, BufferToken, Bytes, DescrFlags, MemDescr, MemPool, Pinned,

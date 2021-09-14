@@ -7,9 +7,12 @@
 
 #![allow(dead_code)]
 
+#[cfg(feature = "pci")]
 use crate::arch::kernel::pci;
+
 use crate::arch::mm::paging::{BasePageSize, PageSize};
 use crate::arch::mm::VirtAddr;
+
 #[cfg(not(feature = "newlib"))]
 use crate::drivers::net::netwakeup;
 use crate::drivers::virtio::depr::virtio::{

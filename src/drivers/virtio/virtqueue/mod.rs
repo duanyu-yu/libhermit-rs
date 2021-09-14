@@ -17,17 +17,24 @@
 #![allow(dead_code)]
 #![allow(clippy::type_complexity)]
 
+#[cfg(feature = "pci")]
 pub mod packed;
+#[cfg(feature = "pci")]
 pub mod split;
 
 use crate::arch::mm::paging::{BasePageSize, PageSize};
 use crate::arch::mm::{paging, VirtAddr};
 
 use self::error::{BufferError, VirtqError};
+
+#[cfg(feature = "pci")]
 use self::packed::PackedVq;
+#[cfg(feature = "pci")]
 use self::split::SplitVq;
 
+#[cfg(feature = "pci")]
 use super::transport::pci::{ComCfg, NotifCfg};
+
 use alloc::boxed::Box;
 use alloc::collections::VecDeque;
 use alloc::rc::Rc;

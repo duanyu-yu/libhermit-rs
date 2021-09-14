@@ -11,8 +11,10 @@
 pub mod depr;
 pub mod env;
 pub mod transport;
+#[cfg(feature = "pci")]
 pub mod virtqueue;
 
+#[cfg(feature = "pci")]
 pub mod error {
 	use crate::arch::x86_64::kernel::pci::error::PciError;
 	use crate::drivers::net::virtio_net::error::VirtioNetError;

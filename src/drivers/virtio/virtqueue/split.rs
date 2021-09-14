@@ -9,7 +9,9 @@
 //! See Virito specification v1.1. - 2.6
 #![allow(dead_code)]
 
+#[cfg(feature = "pci")]
 use super::super::transport::pci::{ComCfg, NotifCfg, NotifCtrl};
+
 use super::error::VirtqError;
 use super::{
 	AsSliceU8, BuffSpec, Buffer, BufferToken, Bytes, DescrFlags, MemDescr, MemPool, Pinned,

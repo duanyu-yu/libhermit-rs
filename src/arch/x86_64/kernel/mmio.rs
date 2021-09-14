@@ -5,7 +5,7 @@ use crate::arch::x86_64::mm::paging::virt_to_phys;
 use core::{str};
 use alloc::vec::Vec;
 
-const MAGIC_VALUE: u32 = 0x74726976 as u32;
+pub const MAGIC_VALUE: u32 = 0x74726976 as u32;
 
 pub const MMIO_START: usize = 0x00000000c0000000 as usize;
 pub const MMIO_END: usize = 0x00000000c0000fff as usize;
@@ -59,71 +59,71 @@ pub struct MMIO {
 }
 
 impl MMIO {
-    fn set_device_features_sel(&mut self, sel: u32) {
+    pub fn set_device_features_sel(&mut self, sel: u32) {
         info!("writing {:#X} to register DeviceFeaturesSel", sel);
         self.device_features_sel = sel;
     } 
 
-    fn set_driver_features(&mut self, features: u32) {
+    pub fn set_driver_features(&mut self, features: u32) {
         info!("writing {:#X} to register DriverFeatures", features);
         self.driver_features = features;
     }
 
-    fn set_driver_features_sel(&mut self, sel: u32) {
+    pub fn set_driver_features_sel(&mut self, sel: u32) {
         info!("writing {:#X} to register DriverFeaturesSel", sel);
         self.driver_features_sel = sel;
     }
 
-    fn set_guest_page_size(&mut self, pagesize: u32) {
+    pub fn set_guest_page_size(&mut self, pagesize: u32) {
         info!("writing {:#X} to register GuestPageSize", pagesize);
         self.guest_page_size = pagesize;
     }
 
-    fn set_queue_sel(&mut self, sel: u32) {
+    pub fn set_queue_sel(&mut self, sel: u32) {
         info!("writing {:#X} to register QueueSel", sel);
         self.queue_sel = sel;
     }
 
-    fn set_queue_num(&mut self, queue_num: u32) {
+    pub fn set_queue_num(&mut self, queue_num: u32) {
         info!("writing {:#X} to register QueueNum", queue_num);
         self.queue_num = queue_num;
     }
 
-    fn set_queue_align(&mut self, queue_align: u32) {
+    pub fn set_queue_align(&mut self, queue_align: u32) {
         info!("writing {:#X} to register QueueAlign", queue_align);
         self.queue_align = queue_align;
     }
 
-    fn set_queue_pfn(&mut self, queue_pfn: u32) {
+    pub fn set_queue_pfn(&mut self, queue_pfn: u32) {
         info!("writing {:#X} to register QueuePFN", queue_pfn);
         self.queue_pfn = queue_pfn;
     }
 
-    fn set_queue_ready(&mut self, ready: u32) {
+    pub fn set_queue_ready(&mut self, ready: u32) {
         self.queue_ready = ready;
     }
 
-    fn set_queue_notify(&mut self, queue_notify: u32) {
+    pub fn set_queue_notify(&mut self, queue_notify: u32) {
         info!("writing {:#X} to register QueueNotify", queue_notify);
         self.queue_notify = queue_notify;
     }
 
-    fn set_interrupt_ack(&mut self, interrupt_ack: u32) {
+    pub fn set_interrupt_ack(&mut self, interrupt_ack: u32) {
         info!("writing {:#X} to register InterruptACK", interrupt_ack);
         self.interrupt_ack = interrupt_ack;
     }
 
-    fn set_status(&mut self, status: u32) {
+    pub fn set_status(&mut self, status: u32) {
         info!("writing {:#X} to register Status", status);
         self.status = status;
     }
 
-    fn set_config(&mut self, config: [u32; 3]) {
+    pub fn set_config(&mut self, config: [u32; 3]) {
         info!("writing {:#X?} to register Config", config);
         self.config = config;
     }
 
-    fn print_information(&self) {
+    pub fn print_information(&self) {
         infoheader!(" MMIO INFORMATION ");
 
         infoentry!("Device version", "{:#X}", self.version);

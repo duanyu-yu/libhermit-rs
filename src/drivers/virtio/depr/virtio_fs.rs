@@ -5,11 +5,11 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
+#[cfg(feature = "pci")]
 use crate::arch::x86_64::kernel::fuse::{self, FuseInterface};
+#[cfg(feature = "pci")]
 use crate::arch::x86_64::kernel::pci;
-use crate::drivers::virtio::depr::virtio::{
-	self, consts::*, virtio_pci_common_cfg, VirtioNotification, Virtq,
-};
+use crate::drivers::virtio::depr::virtio::{self, consts::*, virtio_pci_common_cfg, VirtioNotification, Virtq,};
 use crate::syscalls::fs;
 use crate::util;
 

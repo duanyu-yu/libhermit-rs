@@ -50,6 +50,7 @@ pub mod systemtime;
 mod vga;
 #[cfg(feature = "mmio")]
 pub mod mmio;
+use crate::drivers::virtio::transport::mmio as mmio_trans;
 
 const SERIAL_PORT_BAUDRATE: u32 = 115_200;
 
@@ -403,7 +404,8 @@ pub fn boot_processor_init() {
 	finish_processor_init();
 	irq::enable();
 
-	mmio::test_write(1 as u32);
+	let mut mmio: &mut mmio::MMIO = mmio::detect_network().unwrap();
+	mmio_trans::init_virtqueue(mmio, 1 as u32);
 }
 
 /// Boots all available Application Processors on bare-metal or QEMU.

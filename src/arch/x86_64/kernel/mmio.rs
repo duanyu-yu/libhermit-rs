@@ -166,7 +166,7 @@ impl MMIO {
 
 /// Tries to find the MMIO magic-value within the specified address range.
 /// Returns a reference to it within the Ok() if successful or an Err() on failure.
-pub fn detect_mmio(start_address: PhysAddr, end_address: PhysAddr) -> Result<&'static MMIO, &'static str> {
+pub fn detect_mmio(start_address: PhysAddr, end_address: PhysAddr) -> Result<&'static mut MMIO, &'static str> {
     // Trigger page mapping in the first iteration!
 	let mut current_page = 0;
 
@@ -191,7 +191,7 @@ pub fn detect_mmio(start_address: PhysAddr, end_address: PhysAddr) -> Result<&'s
 		}   
 
         // Verify the first register value to find out if this is really an MMIO magic-value.
-        let mmio = unsafe { &*(current_address as *const MMIO) };
+        let mmio = unsafe { &mut *(current_address as *mut MMIO) };
 
         let magic = mmio.magic_value;
 
@@ -216,7 +216,7 @@ pub fn detect_mmio(start_address: PhysAddr, end_address: PhysAddr) -> Result<&'s
 
 /// Tries to find the network device within the specified address range.
 /// Returns a reference to it within the Ok() if successful or an Err() on failure.
-pub fn detect_network() -> Result<&'static MMIO, &'static str> {
+pub fn detect_network() -> Result<&'static mut MMIO, &'static str> {
     // Trigger page mapping in the first iteration!
 	let mut current_page = 0;
 
@@ -241,7 +241,7 @@ pub fn detect_network() -> Result<&'static MMIO, &'static str> {
 		}   
 
         // Verify the first register value to find out if this is really an MMIO magic-value.
-        let mmio = unsafe { &*(current_address as *const MMIO) };
+        let mmio = unsafe { &mut *(current_address as *mut MMIO) };
 
         let magic = mmio.magic_value;
 

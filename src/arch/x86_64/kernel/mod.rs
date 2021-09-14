@@ -404,7 +404,7 @@ pub fn boot_processor_init() {
 	finish_processor_init();
 	irq::enable();
 
-	let mut mmio: &mut mmio::MMIO = mmio::detect_network().unwrap();
+	let mmio = mmio::detect_network().unwrap();
 	mmio_trans::init_virtqueue(mmio, 1 as u32);
 }
 

@@ -49,7 +49,7 @@ static mut VIRTQUEUE_PHYSADDR: PhysAddr = PhysAddr::zero();
     
 // }
 
-pub fn init_virtqueue(mmio: &mut MMIO, index: u32) -> Result<&MMIO, &'static str> {
+pub fn init_virtqueue(mmio: &mut MMIO, index: u32) {
     mmio.set_queue_sel(index);
 
     assert_eq!(
@@ -60,9 +60,12 @@ pub fn init_virtqueue(mmio: &mut MMIO, index: u32) -> Result<&MMIO, &'static str
     );
 
     let queue_num_max: usize = mmio.queue_num_max as usize;   
-    if queue_num_max == 0x0 {
-        return Err("The queue is not available!");
-    }
+    assert_ne!(
+        queue_num_max,
+        0x0 as usize,
+        "The queue {} is not available!",
+        index
+    );
 
     let queue_num: usize = queue_num_max;
     assert!(
@@ -73,26 +76,30 @@ pub fn init_virtqueue(mmio: &mut MMIO, index: u32) -> Result<&MMIO, &'static str
 
     let queue_size: usize = queue_num * BasePageSize::SIZE;
 
-    VIRTQUEUE_VIRTADDR = virtualmem::allocate_aligned(queue_size, BasePageSize::SIZE).unwrap();
-    VIRTQUEUE_PHYSADDR = PhysAddr::from(align_down!(VIRTQUEUE_VIRTADDR.as_usize(), BasePageSize::SIZE));
+    unsafe {
+        VIRTQUEUE_VIRTADDR = virtualmem::allocate_aligned(queue_size, BasePageSize::SIZE).unwrap();
+        VIRTQUEUE_PHYSADDR = PhysAddr::from(align_down!(VIRTQUEUE_VIRTADDR.as_usize(), BasePageSize::SIZE));
 
-    let mut flags = PageTableEntryFlags::empty();
-	flags.device().writable().execute_disable();
-	paging::map::<BasePageSize>(
-		VIRTQUEUE_VIRTADDR,
-		VIRTQUEUE_PHYSADDR,
-		1,
-		flags,
-	);
+        let mut flags = PageTableEntryFlags::empty();
+        flags.device().writable().execute_disable();
+        paging::map::<BasePageSize>(
+            VIRTQUEUE_VIRTADDR,
+            VIRTQUEUE_PHYSADDR,
+            1,
+            flags,
+        );
+    }
 
     mmio.set_queue_num(queue_num as u32);
     mmio.set_queue_align(BasePageSize::SIZE as u32);
 
-    let page_num = VIRTQUEUE_PHYSADDR.as_usize() / BasePageSize::SIZE;
+    let page_num;
+
+    unsafe { 
+        page_num = VIRTQUEUE_PHYSADDR.as_usize() / BasePageSize::SIZE;
+    }
 
     mmio.set_queue_pfn(page_num as u32);
 
     mmio.print_information();
-
-    Ok(mmio)
 }

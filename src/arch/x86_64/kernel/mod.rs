@@ -406,6 +406,8 @@ pub fn boot_processor_init() {
 
 	let mmio = mmio::detect_network().unwrap();
 	mmio_trans::init_virtqueue(mmio, 1 as u32);
+
+	systemtime::uptime();
 }
 
 /// Boots all available Application Processors on bare-metal or QEMU.

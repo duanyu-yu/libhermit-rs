@@ -242,6 +242,10 @@ pub fn init() {
 	// 	"HermitCore-rs booted on {:04}-{:02}-{:02} at {:02}:{:02}:{:02}",
 	// 	year, month, day, hour, minute, second
 	// );
-
 	
+}
+
+pub fn uptime() {
+	let uptime = processor::get_timer_ticks();
+	info!("Kernel uptime: {} ms", uptime);
 }

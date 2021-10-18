@@ -267,20 +267,40 @@ fn detect_from_acpi() -> Result<PhysAddr, ()> {
 	Ok(PhysAddr(madt_header.local_apic_address.into()))
 }
 
+fn default_apic() -> PhysAddr {
+	warn!("Try to use default APIC address");
+
+	let default_address = PhysAddr(0xFEC0_0000);
+
+	unsafe {
+		IOAPIC_ADDRESS = virtualmem::allocate(BasePageSize::SIZE).unwrap();
+		debug!(
+			"Mapping IOAPIC at {:#X} to virtual address {:#X}",
+			default_address, IOAPIC_ADDRESS
+		);
+
+		let mut flags = PageTableEntryFlags::empty();
+		flags.device().writable().execute_disable();
+		paging::map::<BasePageSize>(IOAPIC_ADDRESS, default_address, 1, flags);
+	}
+
+	PhysAddr(0xFEE0_0000)
+}
+
 fn detect_from_uhyve() -> Result<PhysAddr, ()> {
 	if environment::is_uhyve() {
-		let defaullt_address = PhysAddr(0xFEC0_0000);
+		let default_address = PhysAddr(0xFEC0_0000);
 
 		unsafe {
 			IOAPIC_ADDRESS = virtualmem::allocate(BasePageSize::SIZE).unwrap();
 			debug!(
 				"Mapping IOAPIC at {:#X} to virtual address {:#X}",
-				defaullt_address, IOAPIC_ADDRESS
+				default_address, IOAPIC_ADDRESS
 			);
 
 			let mut flags = PageTableEntryFlags::empty();
 			flags.device().writable().execute_disable();
-			paging::map::<BasePageSize>(IOAPIC_ADDRESS, defaullt_address, 1, flags);
+			paging::map::<BasePageSize>(IOAPIC_ADDRESS, default_address, 1, flags);
 		}
 
 		return Ok(PhysAddr(0xFEE0_0000));
@@ -543,7 +563,7 @@ pub fn init_next_processor_variables(core_id: CoreId) {
 		);
 
 		trace!(
-			"Initialize per core data at 0x{:x} (size {} bytes)",
+			"Initialize per core data at {:#x} (size {} bytes)",
 			core::ptr::read_volatile(&(*BOOT_INFO).current_percore_address),
 			mem::size_of::<PerCoreVariables>()
 		);
@@ -594,7 +614,7 @@ pub fn boot_application_processors() {
 			cr3().try_into().unwrap();
 		// Set entry point
 		debug!(
-			"Set entry point for application processor to 0x{:x}",
+			"Set entry point for application processor to {:#x}",
 			_start as usize
 		);
 		*((SMP_BOOT_CODE_ADDRESS + SMP_BOOT_CODE_OFFSET_ENTRY).as_mut_ptr()) = _start as usize;

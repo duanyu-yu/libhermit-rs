@@ -5,6 +5,8 @@ use core::{intrinsics, ptr};
 
 use x86::controlregs::{cr0, cr0_write, cr4, Cr0};
 
+use dtb::Reader;
+
 use crate::arch::mm::{PhysAddr, VirtAddr};
 use crate::arch::x86_64::kernel::irq::{get_irq_name, IrqStatistics};
 use crate::arch::x86_64::kernel::percore::*;
@@ -13,6 +15,7 @@ use crate::environment;
 use crate::kernel_message_buffer;
 use crate::scheduler::CoreId;
 
+pub mod devicetree;
 #[cfg(feature = "acpi")]
 pub mod acpi;
 pub mod apic;
@@ -73,6 +76,7 @@ pub struct BootInfo {
 	hcgateway: [u8; 4],
 	hcmask: [u8; 4],
 	tls_align: u64,
+	dtb: u64,
 }
 
 impl BootInfo {
@@ -104,6 +108,7 @@ impl BootInfo {
 		hcgateway: [0; 4],
 		hcmask: [0; 4],
 		tls_align: 0,
+		dtb: 0,
 	};
 
 	pub const fn current_stack_address_offset() -> isize {
@@ -281,6 +286,16 @@ pub fn get_cmdline() -> VirtAddr {
 	unsafe { VirtAddr(core::ptr::read_volatile(&(*BOOT_INFO).cmdline)) }
 }
 
+pub fn get_dtb_reader() -> Result<Reader<'static>, &'static str> {
+	unsafe { info!("Device Tree located at {:#x}", core::ptr::read_volatile(&(*BOOT_INFO).dtb)); }
+
+	let reader = unsafe {
+		Reader::read_from_address(core::ptr::read_volatile(&(*BOOT_INFO).dtb) as usize).unwrap()
+	};
+
+	Ok(reader)
+}
+
 /// Earliest initialization function called by the Boot Processor.
 pub fn message_output_init() {
 	percore::init();
@@ -402,6 +417,8 @@ pub fn boot_processor_init() {
 	scheduler::install_timer_handler();
 	finish_processor_init();
 	irq::enable();
+
+	devicetree::print_information(&get_dtb_reader().unwrap());
 }
 
 /// Boots all available Application Processors on bare-metal or QEMU.

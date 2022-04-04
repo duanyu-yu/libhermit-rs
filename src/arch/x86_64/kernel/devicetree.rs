@@ -21,3 +21,7 @@ pub fn print_information(reader: &Reader<'_>) {
     }
     info! ("End DEVICE TREE");
 } 
+
+pub fn get_cpu_frequency() {
+    
+}

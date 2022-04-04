@@ -206,6 +206,7 @@ enum CpuFrequencySources {
 	CpuIdTscInfo,
 	HypervisorTscInfo,
 	Visionary,
+	DeviceTree,
 }
 
 impl fmt::Display for CpuFrequencySources {
@@ -219,6 +220,7 @@ impl fmt::Display for CpuFrequencySources {
 			CpuFrequencySources::CpuIdTscInfo => write!(f, "CpuId Tsc Info"),
 			CpuFrequencySources::HypervisorTscInfo => write!(f, "Tsc Info from Hypervisor"),
 			CpuFrequencySources::Visionary => write!(f, "Visionary"),
+			CpuFrequencySources::DeviceTree => write!(f, "DeviceTree"),
 			_ => panic!("Attempted to print an invalid CPU Frequency Source"),
 		}
 	}
@@ -329,6 +331,9 @@ impl CpuFrequency {
 		// future implementations could add support for different hypervisors
 		// by adding or_else here
 		self.set_detected_cpu_frequency(detect_from_uhyve()?, CpuFrequencySources::Hypervisor)
+	}
+
+	fn detect_from_devicetree(&mut self) -> Result<(),()> {
 	}
 
 	extern "x86-interrupt" fn measure_frequency_timer_handler(

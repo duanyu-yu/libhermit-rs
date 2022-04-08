@@ -256,7 +256,15 @@ pub fn get_mbinfo() -> VirtAddr {
 
 #[cfg(feature = "smp")]
 pub fn get_processor_count() -> u32 {
-	unsafe { core::ptr::read_volatile(&(*BOOT_INFO).cpu_online) as u32 }
+	let mut dtb = unsafe { core::ptr::read_volatile(&(*BOOT_INFO).dtb) };
+
+	if dtb == 0 {
+		info!("Getting Processor Count via Boot Info.");
+		unsafe { return core::ptr::read_volatile(&(*BOOT_INFO).cpu_online) as u32; }
+	}
+
+	info!("Getting Processor Count via Device Tree");
+	unsafe { return devicetree::get_cpu_count(dtb as usize); }
 }
 
 #[cfg(not(feature = "smp"))]

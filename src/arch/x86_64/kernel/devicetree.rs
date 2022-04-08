@@ -22,6 +22,23 @@ pub fn print_information(reader: &Reader<'_>) {
     info! ("End DEVICE TREE");
 } 
 
+pub fn get_cpu_count(dtb_addr: usize) -> u32 {
+    let reader = unsafe {
+        Reader::read_from_address(dtb_addr).unwrap()
+    };
+
+    let mut count = 0;
+    for entry in reader.struct_items() {
+        if entry.is_begin_node() {
+            if entry.node_name() == Ok("cpu") {
+                count += 1;
+            }
+        }
+    }
+
+    count
+}
+
 pub fn get_cpu_frequency() {
     
 }

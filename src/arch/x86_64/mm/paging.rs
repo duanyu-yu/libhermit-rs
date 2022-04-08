@@ -565,8 +565,8 @@ where
 		}
 
 		if send_ipi {
-			#[cfg(feature = "smp")]
-			apic::ipi_tlb_flush();
+			// #[cfg(feature = "smp")]
+			// apic::ipi_tlb_flush();
 		}
 	}
 }

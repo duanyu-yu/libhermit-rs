@@ -363,7 +363,7 @@ fn boot_processor_main() -> ! {
 	}
 
 	#[cfg(feature = "smp")]
-	synch_all_cores();
+	// synch_all_cores();
 
 	#[cfg(feature = "pci")]
 	info!("Compiled with PCI support");

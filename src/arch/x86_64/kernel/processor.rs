@@ -333,9 +333,6 @@ impl CpuFrequency {
 		self.set_detected_cpu_frequency(detect_from_uhyve()?, CpuFrequencySources::Hypervisor)
 	}
 
-	fn detect_from_devicetree(&mut self) -> Result<(),()> {
-	}
-
 	extern "x86-interrupt" fn measure_frequency_timer_handler(
 		_stack_frame: irq::ExceptionStackFrame,
 	) {

@@ -1,5 +1,42 @@
 use dtb::{Reader, StructItem};
 
+pub struct MemoryRegion {
+    base_address: u64,
+    length: u64,
+}
+
+impl Debug for MemoryRegion {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        unsafe {
+            write!(
+                f,
+                "MemoryRegion {{ base_address: {}, length: {} }}",
+                self.base_address, self.length
+            )
+        }
+    }
+}
+
+impl Default for MemoryRegion {
+    fn default() -> Self {
+        Self::new(0, 0)
+    }
+}
+
+impl MemoryRegion {
+    pub fn new(base_addr: u64, length: u64) -> Self {
+        Self { base_addr, length }
+    }
+
+    pub fn base_address(&self) -> u64 {
+        self.base_address
+    }
+
+    pub fn length(&self) -> u64 {
+        self.length
+    }
+}
+
 pub fn print_information(reader: &Reader<'_>) {
     info!("DEVICE TREE:");
 
@@ -39,6 +76,30 @@ pub fn get_cpu_count(dtb_addr: usize) -> u32 {
     count
 }
 
-pub fn get_cpu_frequency() {
-    
+pub fn get_memory_regions(dtb_addr: usize) -> Option<MemoryRegion> {
+    let reader = unsafe {
+        Reader::read_from_address(dtb_addr).unwrap()
+    };
+
+    let mut reg = 0;
+    for entry in reader.struct_items() {
+        if entry.node_name() == Ok("memory") {
+            if entry.is_property() && entry.name() == Ok("reg") {
+                reg = entry.value().unwrap();
+            }
+        }
+    }
+
+    if reg == 0 {
+        return None;
+    }
+
+    let reg_length = u64::from_be_bytes(reg.take(4..).unwrap());
+
+    let base_addr = u64::from_be_bytes(reg);
+
+    Some(MemoryRegion {
+        base_address: base_addr,
+        length: reg_length,
+    })
 }

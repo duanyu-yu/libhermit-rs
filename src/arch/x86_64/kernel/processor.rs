@@ -3,7 +3,7 @@
 #[cfg(feature = "acpi")]
 use crate::arch::x86_64::kernel::acpi;
 use crate::arch::x86_64::kernel::{idt, irq, pic, pit, BOOT_INFO};
-use crate::environment;
+use crate::env;
 use crate::x86::controlregs::*;
 use crate::x86::cpuid::*;
 use crate::x86::msr::*;
@@ -12,6 +12,7 @@ use core::arch::x86_64::{
 	__rdtscp, _fxrstor, _fxsave, _mm_lfence, _rdrand32_step, _rdrand64_step, _rdtsc, _xrstor,
 	_xsave,
 };
+use core::convert::Infallible;
 use core::hint::spin_loop;
 use core::{fmt, u32};
 use qemu_exit::QEMUExit;
@@ -255,7 +256,7 @@ impl CpuFrequency {
 	}
 
 	unsafe fn detect_from_cmdline(&mut self) -> Result<(), ()> {
-		let mhz = environment::get_command_line_cpu_frequency().ok_or(())?;
+		let mhz = env::freq().ok_or(())?;
 		self.set_detected_cpu_frequency(mhz, CpuFrequencySources::CommandLine)
 	}
 
@@ -316,7 +317,7 @@ impl CpuFrequency {
 
 	fn detect_from_hypervisor(&mut self) -> Result<(), ()> {
 		fn detect_from_uhyve() -> Result<u16, ()> {
-			if environment::is_uhyve() {
+			if env::is_uhyve() {
 				unsafe {
 					let cpu_freq = core::ptr::read_volatile(&(*BOOT_INFO).cpu_freq);
 					if cpu_freq > (u16::MAX as u32) {
@@ -342,17 +343,17 @@ impl CpuFrequency {
 		pic::eoi(pit::PIT_INTERRUPT_NUMBER);
 	}
 
-	#[cfg(not(any(target_os = "none", target_os = "hermit")))]
+	#[cfg(not(target_os = "none"))]
 	fn measure_frequency(&mut self) -> Result<(), ()> {
 		// return just Ok because the real implementation must run in ring 0
 		self.source = CpuFrequencySources::Measurement;
 		Ok(())
 	}
 
-	#[cfg(any(target_os = "none", target_os = "hermit"))]
+	#[cfg(target_os = "none")]
 	fn measure_frequency(&mut self) -> Result<(), ()> {
 		// The PIC is not initialized for uhyve, so we cannot measure anything.
-		if environment::is_uhyve() {
+		if env::is_uhyve() {
 			return Err(());
 		}
 
@@ -426,18 +427,20 @@ impl CpuFrequency {
 
 	unsafe fn detect(&mut self) {
 		let cpuid = CpuId::new();
-		self.detect_from_cpuid(&cpuid)
-			.or_else(|_e| self.detect_from_cpuid_tsc_info(&cpuid))
-			.or_else(|_e| self.detect_from_cpuid_hypervisor_info(&cpuid))
-			.or_else(|_e| self.detect_from_hypervisor())
-			.or_else(|_e| self.detect_from_cmdline())
-			.or_else(|_e| self.detect_from_cpuid_brand_string(&cpuid))
-			.or_else(|_e| self.measure_frequency())
-			.or_else(|_e| {
-				warn!("Could not determine the processor frequency! Guess a frequncy of 2Ghz!");
-				self.set_detected_cpu_frequency(2000, CpuFrequencySources::Visionary)
-			})
-			.unwrap();
+		unsafe {
+			self.detect_from_cpuid(&cpuid)
+				.or_else(|_e| self.detect_from_cpuid_tsc_info(&cpuid))
+				.or_else(|_e| self.detect_from_cpuid_hypervisor_info(&cpuid))
+				.or_else(|_e| self.detect_from_hypervisor())
+				.or_else(|_e| self.detect_from_cmdline())
+				.or_else(|_e| self.detect_from_cpuid_brand_string(&cpuid))
+				.or_else(|_e| self.measure_frequency())
+				.or_else(|_e| {
+					warn!("Could not determine the processor frequency! Guess a frequncy of 2Ghz!");
+					self.set_detected_cpu_frequency(2000, CpuFrequencySources::Visionary)
+				})
+				.unwrap();
+		}
 	}
 
 	fn get(&self) -> u16 {
@@ -608,7 +611,7 @@ impl fmt::Display for CpuFeaturePrinter {
 }
 
 pub fn run_on_hypervisor() -> bool {
-	if environment::is_uhyve() {
+	if env::is_uhyve() {
 		true
 	} else {
 		unsafe { RUN_ON_HYPERVISOR }
@@ -883,7 +886,7 @@ pub fn print_information() {
 	infofooter!();
 }
 
-/*#[cfg(not(any(target_os = "none", target_os = "hermit")))]
+/*#[cfg(not(target_os = "none"))]
 #[test]
 fn print_cpu_information() {
 	::logging::init();
@@ -977,12 +980,26 @@ pub fn halt() {
 /// Shutdown the system
 pub fn shutdown() -> ! {
 	info!("Shutting down system");
-	#[cfg(feature = "acpi")]
-	acpi::poweroff();
+	let acpi_result: Result<Infallible, ()> = {
+		#[cfg(feature = "acpi")]
+		{
+			acpi::poweroff()
+		}
 
-	// assume that we running on Qemu
-	let exit_handler = qemu_exit::X86::new(0xf4, 3);
-	exit_handler.exit_success()
+		#[cfg(not(feature = "acpi"))]
+		{
+			Err(())
+		}
+	};
+
+	match acpi_result {
+		Ok(_never) => unreachable!(),
+		Err(()) => {
+			// Try QEMU's debug exit
+			let exit_handler = qemu_exit::X86::new(0xf4, 3);
+			exit_handler.exit_success()
+		}
+	}
 }
 
 pub fn get_timer_ticks() -> u64 {
@@ -1043,17 +1060,21 @@ pub fn get_timestamp() -> u64 {
 }
 
 unsafe fn get_timestamp_rdtsc() -> u64 {
-	_mm_lfence();
-	let value = _rdtsc();
-	_mm_lfence();
-	value
+	unsafe {
+		_mm_lfence();
+		let value = _rdtsc();
+		_mm_lfence();
+		value
+	}
 }
 
 unsafe fn get_timestamp_rdtscp() -> u64 {
-	let mut aux: u32 = 0;
-	let value = __rdtscp(&mut aux);
-	_mm_lfence();
-	value
+	unsafe {
+		let mut aux: u32 = 0;
+		let value = __rdtscp(&mut aux);
+		_mm_lfence();
+		value
+	}
 }
 
 /// Delay execution by the given number of microseconds using busy-waiting.

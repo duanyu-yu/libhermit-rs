@@ -56,7 +56,7 @@ impl<T> PerCoreVariable<T> {
 
 	#[inline]
 	unsafe fn offset(&self) -> usize {
-		let base = &PERCORE as *const _ as usize;
+		let base = unsafe { &PERCORE } as *const _ as usize;
 		let field = self as *const _ as usize;
 		field - base
 	}
@@ -73,36 +73,44 @@ impl<T> PerCoreVariableMethods<T> for PerCoreVariable<T> {
 	{
 		if cfg!(feature = "smp") {
 			let value: u64;
-			asm!(
-				"mov {}, gs:[{}]",
-				lateout(reg) value,
-				in(reg) self.offset(),
-				options(pure, readonly, nostack, preserves_flags),
-			);
-			mem::transmute_copy(&value)
+			unsafe {
+				asm!(
+					"mov {}, gs:[{}]",
+					lateout(reg) value,
+					in(reg) self.offset(),
+					options(pure, readonly, nostack, preserves_flags),
+				);
+				mem::transmute_copy(&value)
+			}
 		} else {
-			*ptr::addr_of_mut!(PERCORE)
-				.cast::<u8>()
-				.add(self.offset())
-				.cast()
+			unsafe {
+				*ptr::addr_of_mut!(PERCORE)
+					.cast::<u8>()
+					.add(self.offset())
+					.cast()
+			}
 		}
 	}
 
 	#[inline]
 	default unsafe fn set(&self, value: T) {
 		if cfg!(feature = "smp") {
-			let value = mem::transmute_copy::<_, u64>(&value);
-			asm!(
-				"mov gs:[{}], {}",
-				in(reg) self.offset(),
-				in(reg) value,
-				options(nostack, preserves_flags),
-			);
+			unsafe {
+				let value = mem::transmute_copy::<_, u64>(&value);
+				asm!(
+					"mov gs:[{}], {}",
+					in(reg) self.offset(),
+					in(reg) value,
+					options(nostack, preserves_flags),
+				);
+			}
 		} else {
-			*ptr::addr_of_mut!(PERCORE)
-				.cast::<u8>()
-				.add(self.offset())
-				.cast() = value;
+			unsafe {
+				*ptr::addr_of_mut!(PERCORE)
+					.cast::<u8>()
+					.add(self.offset())
+					.cast() = value;
+			}
 		}
 	}
 }
@@ -116,35 +124,39 @@ impl Is32BitVariable for u32 {}
 impl<T: Is32BitVariable> PerCoreVariableMethods<T> for PerCoreVariable<T> {
 	#[inline]
 	unsafe fn get(&self) -> T {
-		let value: u32;
-		asm!(
-			"mov {:e}, gs:[{}]",
-			lateout(reg) value,
-			in(reg) self.offset(),
-			options(pure, readonly, nostack, preserves_flags),
-		);
-		mem::transmute_copy(&value)
+		unsafe {
+			let value: u32;
+			asm!(
+				"mov {:e}, gs:[{}]",
+				lateout(reg) value,
+				in(reg) self.offset(),
+				options(pure, readonly, nostack, preserves_flags),
+			);
+			mem::transmute_copy(&value)
+		}
 	}
 
 	#[inline]
 	unsafe fn set(&self, value: T) {
-		let value = mem::transmute_copy::<_, u32>(&value);
-		asm!(
-			"mov gs:[{}], {:e}",
-			in(reg) self.offset(),
-			in(reg) value,
-			options(nostack, preserves_flags),
-		);
+		unsafe {
+			let value = mem::transmute_copy::<_, u32>(&value);
+			asm!(
+				"mov gs:[{}], {:e}",
+				in(reg) self.offset(),
+				in(reg) value,
+				options(nostack, preserves_flags),
+			);
+		}
 	}
 }
 
-#[cfg(any(target_os = "none", target_os = "hermit"))]
+#[cfg(target_os = "none")]
 #[inline]
 pub fn core_id() -> CoreId {
 	unsafe { PERCORE.core_id.get() }
 }
 
-#[cfg(not(any(target_os = "none", target_os = "hermit")))]
+#[cfg(not(target_os = "none"))]
 pub fn core_id() -> CoreId {
 	0
 }

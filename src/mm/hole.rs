@@ -29,10 +29,12 @@ impl HoleList {
 		assert_eq!(size_of::<Hole>(), Self::min_size());
 
 		let ptr = hole_addr as *mut Hole;
-		ptr.write(Hole::new(hole_size, None));
+		unsafe {
+			ptr.write(Hole::new(hole_size, None));
+		}
 
 		HoleList {
-			first: Hole::new(0, Some(&mut *ptr)),
+			first: Hole::new(0, Some(unsafe { &mut *ptr })),
 		}
 	}
 
@@ -80,7 +82,7 @@ impl HoleList {
 	}
 
 	/// Returns information about the first hole for test purposes.
-	#[cfg(not(any(target_os = "none", target_os = "hermit")))]
+	#[cfg(not(target_os = "none"))]
 	#[cfg(test)]
 	pub fn first_hole(&self) -> Option<(usize, usize)> {
 		self.first
@@ -91,13 +93,13 @@ impl HoleList {
 }
 
 /// A block containing free memory. It points to the next hole and thus forms a linked list.
-#[cfg(any(target_os = "none", target_os = "hermit"))]
+#[cfg(target_os = "none")]
 pub struct Hole {
 	size: usize,
 	next: Option<&'static mut Hole>,
 }
 
-#[cfg(not(any(target_os = "none", target_os = "hermit")))]
+#[cfg(not(target_os = "none"))]
 pub struct Hole {
 	pub size: usize,
 	pub next: Option<&'static mut Hole>,
@@ -315,7 +317,7 @@ fn deallocate(mut hole: &mut Hole, addr: usize, mut size: usize) {
 /// function forces a move.
 ///
 /// for more information, see section “id Forces References To Move” in:
-/// https://bluss.github.io/rust/fun/2015/10/11/stuff-the-identity-function-does/
+/// <https://bluss.github.io/rust/fun/2015/10/11/stuff-the-identity-function-does/>
 fn move_helper<T>(x: T) -> T {
 	x
 }

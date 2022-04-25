@@ -31,12 +31,6 @@ exclude = [
 	".gitignore",
 ]
 
-[package.metadata.docs.rs]
-targets = [
-	"x86_64-unknown-none-hermitkernel",
-	"aarch64-unknown-none-hermitkernel",
-]
-
 [lib]
 crate-type = ["staticlib", "lib"]  # "lib" required for integration tests
 name = "hermit"
@@ -54,10 +48,10 @@ name = "measure_startup_time"
 harness = false
 
 [features]
-default = ["pci", "acpi", "fsgsbase", "smp"]
+default = ["pci", "pci-ids", "acpi", "fsgsbase", "smp"]
 vga = []
 newlib = []
-pci = ["pci-ids"]
+pci = []
 acpi = []
 smp = ["include-transformed"]
 fsgsbase = []
@@ -71,6 +65,7 @@ log = { version = "0.4", default-features = false }
 num = { version = "0.4", default-features = false }
 num-derive = "0.3"
 num-traits = { version = "0.2", default-features = false }
+once_cell = { version = "1.10", default-features = false, features = ["alloc"] }
 pci-ids = { version = "0.2", optional = true }
 scopeguard = { version = "1.1", default-features = false }
 shell-words = { version = "1.1", default-features = false }
@@ -79,13 +74,19 @@ dtb = "0.2.0"
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
 multiboot = "0.7"
-x86 = { version = "0.46", default-features = false }
+time = { version = "0.3", default-features = false }
+x86 = { version = "0.47", default-features = false }
 
 [dev-dependencies]
 float-cmp = "0.9"
 num-traits = { version = "0.2", default-features = false }
-x86 = { version = "0.46", default-features = false }
+x86 = { version = "0.47", default-features = false }
 
 [target.'cfg(target_arch = "aarch64")'.dependencies.aarch64]
 version = "0.0.7"
 default-features = false
+
+[workspace]
+members = [
+	"xtask",
+]

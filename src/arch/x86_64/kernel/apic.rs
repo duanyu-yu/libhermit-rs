@@ -8,7 +8,7 @@ use crate::arch::x86_64::mm::{paging, virtualmem};
 use crate::arch::x86_64::mm::{PhysAddr, VirtAddr};
 use crate::collections::irqsave;
 use crate::config::*;
-use crate::environment;
+use crate::env;
 use crate::mm;
 use crate::scheduler;
 use crate::scheduler::CoreId;
@@ -471,7 +471,7 @@ fn default_apic() -> PhysAddr {
 }
 
 fn detect_from_uhyve() -> Result<PhysAddr, ()> {
-	if environment::is_uhyve() {
+	if env::is_uhyve() {
 		let default_address = PhysAddr(0xFEC0_0000);
 
 		unsafe {
@@ -759,8 +759,8 @@ extern "C" {
 /// Boot all Application Processors
 /// This algorithm is derived from Intel MultiProcessor Specification 1.4, B.4, but testing has shown
 /// that a second STARTUP IPI and setting the BIOS Reset Vector are no longer necessary.
-/// This is partly confirmed by https://wiki.osdev.org/Symmetric_Multiprocessing
-#[cfg(all(any(target_os = "none", target_os = "hermit"), feature = "smp"))]
+/// This is partly confirmed by <https://wiki.osdev.org/Symmetric_Multiprocessing>
+#[cfg(all(target_os = "none", feature = "smp"))]
 pub fn boot_application_processors() {
 	use include_transformed::include_nasm_bin;
 

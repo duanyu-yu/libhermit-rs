@@ -294,6 +294,10 @@ pub fn get_cmdline() -> VirtAddr {
 	unsafe { VirtAddr(core::ptr::read_volatile(&(*BOOT_INFO).cmdline)) }
 }
 
+pub fn get_dtb_addr() -> usize {
+	unsafe { core::ptr::read_volatile(&(*BOOT_INFO).dtb) as usize }
+}
+
 pub fn get_dtb_reader() -> Result<Reader<'static>, &'static str> {
 	unsafe { info!("Device Tree located at {:#x}", core::ptr::read_volatile(&(*BOOT_INFO).dtb)); }
 
@@ -427,6 +431,7 @@ pub fn boot_processor_init() {
 	irq::enable();
 
 	devicetree::print_information(&get_dtb_reader().unwrap());
+	devicetree::get_memory_regions(get_dtb_addr());
 }
 
 /// Boots all available Application Processors on bare-metal or QEMU.

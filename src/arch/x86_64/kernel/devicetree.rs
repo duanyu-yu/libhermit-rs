@@ -1,12 +1,12 @@
 use dtb::{Reader, StructItem};
-
+use core::fmt;
 pub struct MemoryRegion {
     base_address: u64,
     length: u64,
 }
 
-impl Debug for MemoryRegion {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl fmt::Debug for MemoryRegion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         unsafe {
             write!(
                 f,
@@ -25,7 +25,9 @@ impl Default for MemoryRegion {
 
 impl MemoryRegion {
     pub fn new(base_addr: u64, length: u64) -> Self {
-        Self { base_addr, length }
+        Self { 
+            base_address: base_addr,
+            length: length }
     }
 
     pub fn base_address(&self) -> u64 {
@@ -81,7 +83,7 @@ pub fn get_memory_regions(dtb_addr: usize) -> Option<MemoryRegion> {
         Reader::read_from_address(dtb_addr).unwrap()
     };
 
-    let mut reg = 0;
+    let mut reg: &[u8] = &[];
     for entry in reader.struct_items() {
         if entry.node_name() == Ok("memory") {
             if entry.is_property() && entry.name() == Ok("reg") {
@@ -90,7 +92,7 @@ pub fn get_memory_regions(dtb_addr: usize) -> Option<MemoryRegion> {
         }
     }
 
-    if reg == 0 {
+    if reg.is_empty() {
         return None;
     }
 

@@ -1,7 +1,9 @@
+use crate::arch::x86_64::kernel::processor;
 use crate::arch::x86_64::mm::paging::{BasePageSize, PageSize, PageTableEntryFlags};
 use crate::arch::x86_64::mm::{paging, virtualmem};
 use crate::arch::x86_64::mm::{PhysAddr, VirtAddr};
 use crate::x86::io::*;
+use core::convert::Infallible;
 use core::{mem, ptr, slice, str};
 
 /// Memory at this physical address is supposed to contain a pointer to the Extended BIOS Data Area (EBDA).
@@ -56,11 +58,7 @@ struct AcpiRsdp {
 
 impl AcpiRsdp {
 	fn oem_id(&self) -> &str {
-		unsafe { str::from_utf8_unchecked(&self.oem_id) }
-	}
-
-	fn signature(&self) -> &str {
-		unsafe { str::from_utf8_unchecked(&self.signature) }
+		str::from_utf8(&self.oem_id).unwrap()
 	}
 }
 
@@ -80,7 +78,7 @@ struct AcpiSdtHeader {
 
 impl AcpiSdtHeader {
 	fn signature(&self) -> &str {
-		unsafe { str::from_utf8_unchecked(&self.signature) }
+		str::from_utf8(&self.signature).unwrap()
 	}
 }
 
@@ -264,7 +262,7 @@ fn detect_rsdp(start_address: PhysAddr, end_address: PhysAddr) -> Result<&'stati
 
 		// Verify the signature to find out if this is really an ACPI RSDP.
 		let rsdp = unsafe { &*(current_address as *const AcpiRsdp) };
-		if rsdp.signature() != "RSD PTR " {
+		if &rsdp.signature != b"RSD PTR " {
 			continue;
 		}
 
@@ -443,7 +441,7 @@ pub fn get_madt() -> Option<&'static AcpiTable<'static>> {
 	unsafe { MADT.as_ref() }
 }
 
-pub fn poweroff() {
+pub fn poweroff() -> Result<Infallible, ()> {
 	unsafe {
 		if let (Some(pm1a_cnt_blk), Some(slp_typa)) = (PM1A_CNT_BLK, SLP_TYPA) {
 			let bits = (u16::from(slp_typa) << 10) | SLP_EN;
@@ -452,8 +450,12 @@ pub fn poweroff() {
 				pm1a_cnt_blk, bits
 			);
 			outw(pm1a_cnt_blk, bits);
+			loop {
+				processor::halt();
+			}
 		} else {
-			debug!("ACPI Power Off is not available");
+			warn!("ACPI Power Off is not available");
+			Err(())
 		}
 	}
 }

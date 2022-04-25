@@ -10,13 +10,17 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUSTFLAGS: -Dwarnings
+
+permissions:
+  contents: read
 
 jobs:
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Rustup (apply rust-toolchain.toml)
         run: rustup show
       - name: Install NASM
@@ -24,4 +28,4 @@ jobs:
           sudo apt-get update
           sudo apt-get install nasm
       - name: Clippy
-        run: cargo clippy -- -D warnings
+        run: cargo xtask clippy

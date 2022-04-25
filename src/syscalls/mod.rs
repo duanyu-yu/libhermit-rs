@@ -2,11 +2,11 @@
 
 #[cfg(all(not(feature = "newlib"), target_arch = "x86_64"))]
 use crate::drivers::net::*;
-use crate::environment;
+use crate::env;
 #[cfg(feature = "newlib")]
 use crate::synch::spinlock::SpinlockIrqSave;
 use crate::syscalls::interfaces::SyscallInterface;
-#[cfg(any(target_os = "none", target_os = "hermit"))]
+#[cfg(target_os = "none")]
 use crate::{__sys_free, __sys_malloc, __sys_realloc};
 
 pub use self::condvar::*;
@@ -41,13 +41,24 @@ pub static LWIP_LOCK: SpinlockIrqSave<()> = SpinlockIrqSave::new(());
 
 static mut SYS: &'static dyn SyscallInterface = &interfaces::Generic;
 
+/// Shuts down the machine.
+///
+/// This does not require the syscall interface to be initialized.
+pub(crate) fn shutdown(arg: i32) -> ! {
+	if env::is_uhyve() {
+		interfaces::Uhyve.shutdown(arg)
+	} else {
+		interfaces::Generic.shutdown(arg)
+	}
+}
+
 pub(crate) fn init() {
 	unsafe {
 		// We know that HermitCore has successfully initialized a network interface.
 		// Now check if we can load a more specific SyscallInterface to make use of networking.
-		if environment::is_proxy() {
+		if env::is_proxy() {
 			panic!("Currently, we don't support the proxy mode!");
-		} else if environment::is_uhyve() {
+		} else if env::is_uhyve() {
 			SYS = &interfaces::Uhyve;
 		}
 
@@ -60,19 +71,19 @@ pub(crate) fn init() {
 	sbrk_init();
 }
 
-#[cfg(any(target_os = "none", target_os = "hermit"))]
+#[cfg(target_os = "none")]
 #[no_mangle]
 pub extern "C" fn sys_malloc(size: usize, align: usize) -> *mut u8 {
 	__sys_malloc(size, align)
 }
 
-#[cfg(any(target_os = "none", target_os = "hermit"))]
+#[cfg(target_os = "none")]
 #[no_mangle]
 pub extern "C" fn sys_realloc(ptr: *mut u8, size: usize, align: usize, new_size: usize) -> *mut u8 {
 	__sys_realloc(ptr, size, align, new_size)
 }
 
-#[cfg(any(target_os = "none", target_os = "hermit"))]
+#[cfg(target_os = "none")]
 #[no_mangle]
 pub extern "C" fn sys_free(ptr: *mut u8, size: usize, align: usize) {
 	__sys_free(ptr, size, align)

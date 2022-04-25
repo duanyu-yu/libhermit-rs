@@ -11,7 +11,7 @@ use crate::arch::mm::{PhysAddr, VirtAddr};
 use crate::arch::x86_64::kernel::irq::{get_irq_name, IrqStatistics};
 use crate::arch::x86_64::kernel::percore::*;
 use crate::arch::x86_64::kernel::serial::SerialPort;
-use crate::environment;
+use crate::env;
 use crate::kernel_message_buffer;
 use crate::scheduler::CoreId;
 
@@ -120,14 +120,14 @@ impl BootInfo {
 }
 
 /// Kernel header to announce machine features
-#[cfg(not(any(target_os = "none", target_os = "hermit")))]
+#[cfg(not(target_os = "none"))]
 static mut BOOT_INFO: *mut BootInfo = ptr::null_mut();
 
-#[cfg(all(any(target_os = "none", target_os = "hermit"), not(feature = "newlib")))]
+#[cfg(all(target_os = "none", not(feature = "newlib")))]
 #[link_section = ".data"]
 static mut BOOT_INFO: *mut BootInfo = ptr::null_mut();
 
-#[cfg(all(any(target_os = "none", target_os = "hermit"), feature = "newlib"))]
+#[cfg(all(target_os = "none", feature = "newlib"))]
 #[link_section = ".mboot"]
 static mut BOOT_INFO: *mut BootInfo = ptr::null_mut();
 
@@ -138,42 +138,6 @@ pub fn has_ipdevice() -> bool {
 	let ip = unsafe { core::ptr::read_volatile(&(*BOOT_INFO).hcip) };
 
 	!(ip[0] == 255 && ip[1] == 255 && ip[2] == 255 && ip[3] == 255)
-}
-
-#[cfg(not(feature = "newlib"))]
-#[allow(improper_ctypes_definitions)]
-extern "C" fn __sys_uhyve_get_ip() -> [u8; 4] {
-	unsafe { core::ptr::read_volatile(&(*BOOT_INFO).hcip) }
-}
-
-#[no_mangle]
-#[cfg(not(feature = "newlib"))]
-pub fn sys_uhyve_get_ip() -> [u8; 4] {
-	kernel_function!(__sys_uhyve_get_ip())
-}
-
-#[cfg(not(feature = "newlib"))]
-#[allow(improper_ctypes_definitions)]
-extern "C" fn __sys_uhyve_get_gateway() -> [u8; 4] {
-	unsafe { core::ptr::read_volatile(&(*BOOT_INFO).hcgateway) }
-}
-
-#[no_mangle]
-#[cfg(not(feature = "newlib"))]
-pub fn sys_uhyve_get_gateway() -> [u8; 4] {
-	kernel_function!(__sys_uhyve_get_gateway())
-}
-
-#[cfg(not(feature = "newlib"))]
-#[allow(improper_ctypes_definitions)]
-extern "C" fn __sys_uhyve_get_mask() -> [u8; 4] {
-	unsafe { core::ptr::read_volatile(&(*BOOT_INFO).hcmask) }
-}
-
-#[no_mangle]
-#[cfg(not(feature = "newlib"))]
-pub fn sys_uhyve_get_mask() -> [u8; 4] {
-	kernel_function!(__sys_uhyve_get_mask())
 }
 
 #[cfg(feature = "newlib")]
@@ -312,7 +276,7 @@ pub fn message_output_init() {
 		COM1.port_address = core::ptr::read_volatile(&(*BOOT_INFO).uartport);
 	}
 
-	if environment::is_single_kernel() {
+	if env::is_single_kernel() {
 		// We can only initialize the serial port here, because VGA requires processor
 		// configuration first.
 		unsafe {
@@ -321,10 +285,7 @@ pub fn message_output_init() {
 	}
 }
 
-#[cfg(all(
-	not(any(target_os = "none", target_os = "hermit")),
-	not(target_os = "windows")
-))]
+#[cfg(all(not(target_os = "none"), not(target_os = "windows")))]
 pub fn output_message_byte(byte: u8) {
 	extern "C" {
 		fn write(fd: i32, buf: *const u8, count: usize) -> isize;
@@ -346,7 +307,7 @@ pub fn output_message_byte(byte: u8) {
 	}
 }
 
-#[cfg(not(any(target_os = "none", target_os = "hermit")))]
+#[cfg(not(target_os = "none"))]
 #[test]
 fn test_output() {
 	output_message_byte('t' as u8);
@@ -356,9 +317,9 @@ fn test_output() {
 	output_message_byte('\n' as u8);
 }
 
-#[cfg(any(target_os = "none", target_os = "hermit"))]
+#[cfg(target_os = "none")]
 pub fn output_message_byte(byte: u8) {
-	if environment::is_single_kernel() {
+	if env::is_single_kernel() {
 		// Output messages to the serial port and VGA screen in unikernel mode.
 		unsafe {
 			COM1.write_byte(byte);
@@ -374,7 +335,7 @@ pub fn output_message_byte(byte: u8) {
 	}
 }
 
-//#[cfg(any(target_os = "none", target_os = "hermit"))]
+//#[cfg(target_os = "none")]
 pub fn output_message_buf(buf: &[u8]) {
 	for byte in buf {
 		output_message_byte(*byte);
@@ -382,19 +343,19 @@ pub fn output_message_buf(buf: &[u8]) {
 }
 
 /// Real Boot Processor initialization as soon as we have put the first Welcome message on the screen.
-#[cfg(any(target_os = "none", target_os = "hermit"))]
+#[cfg(target_os = "none")]
 pub fn boot_processor_init() {
 	processor::detect_features();
 	processor::configure();
 
-	if cfg!(feature = "vga") && environment::is_single_kernel() && !environment::is_uhyve() {
+	if cfg!(feature = "vga") && env::is_single_kernel() && !env::is_uhyve() {
 		#[cfg(feature = "vga")]
 		vga::init();
 	}
 
 	crate::mm::init();
 	crate::mm::print_information();
-	environment::init();
+	env::init();
 	gdt::init();
 	gdt::add_current_core();
 	idt::install();
@@ -408,14 +369,14 @@ pub fn boot_processor_init() {
 	irq::install();
 	systemtime::init();
 
-	if environment::is_single_kernel() {
+	if env::is_single_kernel() {
 		if is_uhyve_with_pci() || !is_uhyve() {
 			#[cfg(feature = "pci")]
 			pci::init();
 			#[cfg(feature = "pci")]
 			pci::print_information();
 		}
-		if !environment::is_uhyve() {
+		if !env::is_uhyve() {
 			#[cfg(feature = "acpi")]
 			acpi::init();
 		}
@@ -431,7 +392,7 @@ pub fn boot_processor_init() {
 
 /// Boots all available Application Processors on bare-metal or QEMU.
 /// Called after the Boot Processor has been fully initialized along with its scheduler.
-#[cfg(any(target_os = "none", target_os = "hermit"))]
+#[cfg(target_os = "none")]
 pub fn boot_application_processors() {
 	#[cfg(feature = "smp")]
 	apic::boot_application_processors();
@@ -439,7 +400,7 @@ pub fn boot_application_processors() {
 }
 
 /// Application Processor initialization
-#[cfg(all(any(target_os = "none", target_os = "hermit"), feature = "smp"))]
+#[cfg(all(target_os = "none", feature = "smp"))]
 pub fn application_processor_init() {
 	percore::init();
 	processor::configure();
@@ -455,7 +416,7 @@ pub fn application_processor_init() {
 }
 
 fn finish_processor_init() {
-	if environment::is_uhyve() {
+	if env::is_uhyve() {
 		// uhyve does not use apic::detect_from_acpi and therefore does not know the number of processors and
 		// their APIC IDs in advance.
 		// Therefore, we have to add each booted processor into the CPU_LOCAL_APIC_IDS vector ourselves.
@@ -494,17 +455,21 @@ pub fn print_statistics() {
 	}
 }
 
-#[cfg(any(target_os = "none", target_os = "hermit"))]
+#[cfg(target_os = "none")]
 #[inline(never)]
 #[no_mangle]
 unsafe fn pre_init(boot_info: &'static mut BootInfo) -> ! {
 	assert_eq!(boot_info.magic_number, BOOTINFO_MAGIC_NUMBER);
 	// Enable caching
-	let mut cr0 = cr0();
-	cr0.remove(Cr0::CR0_CACHE_DISABLE | Cr0::CR0_NOT_WRITE_THROUGH);
-	cr0_write(cr0);
+	unsafe {
+		let mut cr0 = cr0();
+		cr0.remove(Cr0::CR0_CACHE_DISABLE | Cr0::CR0_NOT_WRITE_THROUGH);
+		cr0_write(cr0);
+	}
 
-	BOOT_INFO = boot_info as *mut BootInfo;
+	unsafe {
+		BOOT_INFO = boot_info as *mut BootInfo;
+	}
 
 	if boot_info.cpu_online == 0 {
 		crate::boot_processor_main()

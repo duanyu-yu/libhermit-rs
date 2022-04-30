@@ -11,13 +11,20 @@ fn generate_park_miller_lehmer_random_number() -> u32 {
 	random
 }
 
-#[allow(improper_ctypes_definitions)]
-extern "C" fn __sys_rand32() -> Option<u32> {
-	arch::processor::generate_random_number32()
+unsafe extern "C" fn __sys_rand32(value: *mut u32) -> i32 {
+	let rand = try_sys!(arch::processor::generate_random_number32().ok_or("sys_rand32 failed"));
+	unsafe {
+		value.write(rand);
+	}
+	0
 }
 
-extern "C" fn __sys_rand64(ret: &mut Option<u64>) {
-	*ret = arch::processor::generate_random_number64();
+unsafe extern "C" fn __sys_rand64(value: *mut u64) -> i32 {
+	let rand = try_sys!(arch::processor::generate_random_number64().ok_or("sys_rand64 failed"));
+	unsafe {
+		value.write(rand);
+	}
+	0
 }
 
 extern "C" fn __sys_rand() -> u32 {
@@ -29,8 +36,8 @@ extern "C" fn __sys_rand() -> u32 {
 /// the function returns `None`.
 #[cfg(not(feature = "newlib"))]
 #[no_mangle]
-pub fn sys_secure_rand32() -> Option<u32> {
-	kernel_function!(__sys_rand32())
+pub unsafe extern "C" fn sys_secure_rand32(value: *mut u32) -> i32 {
+	kernel_function!(__sys_rand32(value))
 }
 
 /// Create a cryptographicly secure 64bit random number with the support of
@@ -38,10 +45,8 @@ pub fn sys_secure_rand32() -> Option<u32> {
 /// the function returns `None`.
 #[cfg(not(feature = "newlib"))]
 #[no_mangle]
-pub fn sys_secure_rand64() -> Option<u64> {
-	let mut ret = None;
-	kernel_function!(__sys_rand64(&mut ret));
-	ret
+pub unsafe extern "C" fn sys_secure_rand64(value: *mut u64) -> i32 {
+	kernel_function!(__sys_rand64(value))
 }
 
 /// The function computes a sequence of pseudo-random integers

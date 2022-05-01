@@ -97,9 +97,9 @@ pub fn get_memory_regions(dtb_addr: usize) -> Option<MemoryRegion> {
         return None;
     }
 
-    let reg_length = u64::from_be_bytes(reg.take(4..).unwrap());
+    let reg_length = u64::from_be_bytes(reg.take(4..).unwrap().try_into().unwrap());
 
-    let base_addr = u64::from_be_bytes(reg.try_into().expect("incorrect length"));
+    let base_addr = u64::from_be_bytes(reg.try_into().unwrap());
 
     Some(MemoryRegion {
         base_address: base_addr,

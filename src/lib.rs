@@ -23,6 +23,7 @@
 #![feature(alloc_error_handler)]
 #![feature(vec_into_raw_parts)]
 #![feature(drain_filter)]
+#![feature(slice_take)]
 #![no_std]
 #![cfg_attr(target_os = "none", feature(custom_test_frameworks))]
 #![cfg_attr(target_os = "none", cfg_attr(test, test_runner(crate::test_runner)))]

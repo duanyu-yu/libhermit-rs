@@ -2,13 +2,14 @@ use core::alloc::AllocError;
 use core::sync::atomic::{AtomicUsize, Ordering};
 use multiboot::information::{MemoryType, Multiboot};
 
-use crate::arch::x86_64::kernel::{get_limit, get_mbinfo};
+use crate::arch::x86_64::kernel::{get_limit, get_mbinfo, get_dtb_addr};
 use crate::arch::x86_64::mm::paging::{BasePageSize, PageSize};
 use crate::arch::x86_64::mm::MEM;
 use crate::arch::x86_64::mm::{PhysAddr, VirtAddr};
 use crate::mm;
 use crate::mm::freelist::{FreeList, FreeListEntry};
 use crate::synch::spinlock::*;
+use crate::arch::x86_64::kernel::devicetree;
 
 static PHYSICAL_FREE_LIST: SpinlockIrqSave<FreeList> = SpinlockIrqSave::new(FreeList::new());
 static TOTAL_MEMORY: AtomicUsize = AtomicUsize::new(0);
@@ -81,8 +82,34 @@ fn detect_from_limits() -> Result<(), ()> {
 	Ok(())
 }
 
+pub fn detect_from_devicetree() -> Result<(), ()> {
+	let dtb_addr = get_dtb_addr();
+	if dtb_addr == 0 {
+		return Err(());
+	}
+
+	let regions = devicetree::get_memory_regions(dtb_addr).expect("Could not find a memory map in the Device Tree");
+	
+	let start_address = if regions.base_address() <= mm::kernel_start_address().as_u64() {
+		mm::kernel_end_address()
+	} else {
+		VirtAddr(regions.base_address())
+	};
+
+	let entry = FreeListEntry::new(
+		start_address.as_usize(),
+		(regions.base_address() + regions.length()) as usize,
+	);
+
+	let _ = TOTAL_MEMORY.fetch_add((regions.base_address() + regions.length()) as usize, Ordering::SeqCst);
+	PHYSICAL_FREE_LIST.lock().list.push_back(entry);
+
+	Ok(())
+}
+
 pub fn init() {
-	detect_from_multiboot_info()
+	detect_from_devicetree()
+		.or_else(|_e| detect_from_multiboot_info())
 		.or_else(|_e| detect_from_limits())
 		.unwrap();
 }

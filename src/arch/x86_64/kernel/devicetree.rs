@@ -85,11 +85,20 @@ pub fn get_memory_regions(dtb_addr: usize) -> Option<MemoryRegion> {
     };
 
     let mut reg: &[u8] = &[];
+    let mut under_memory = false;
     for entry in reader.struct_items() {
         if entry.node_name() == Ok("memory") {
-            if entry.is_property() && entry.name() == Ok("reg") {
-                reg = entry.value().unwrap();
-            }
+            under_memory = true;
+            continue;
+        }
+
+        if under_memory && entry.name() == Ok("reg") {
+            info!("Found a memory region in device tree");
+            reg = entry.value().unwrap();
+        }
+
+        if !entry.is_property() {
+            under_memory = false;
         }
     }
 

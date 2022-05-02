@@ -1,6 +1,7 @@
 use dtb::{Reader, StructItem};
 use core::fmt;
 use core::convert::TryInto;
+
 pub struct MemoryRegion {
     base_address: u64,
     length: u64,
@@ -110,9 +111,9 @@ pub fn get_memory_regions(dtb_addr: usize) -> Option<MemoryRegion> {
         return None;
     }
 
-    let reg_length = u64::from_be_bytes(reg.take(4..).unwrap().try_into().unwrap());
+    let reg_length = u64::from_be_bytes(reg.take(4..).unwrap().split_at(8).0.try_into().unwrap());
 
-    let base_addr = u64::from_be_bytes(reg.try_into().unwrap());
+    let base_addr = u64::from_be_bytes(reg.split_at(8).0.try_into().unwrap());
 
     Some(MemoryRegion {
         base_address: base_addr,

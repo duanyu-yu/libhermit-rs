@@ -47,6 +47,8 @@ fn detect_from_multiboot_info() -> Result<(), ()> {
 		PHYSICAL_FREE_LIST.lock().list.push_back(entry);
 	}
 
+	print_information();
+
 	assert!(
 		found_ram,
 		"Could not find any available RAM in the Multiboot Memory Map"
@@ -84,6 +86,8 @@ fn detect_from_limits() -> Result<(), ()> {
 
 pub fn detect_from_devicetree() -> Result<(), ()> {
 	let dtb_addr = get_dtb_addr();
+	info!("Found Device Tree at {:#x}", dtb_addr);
+
 	if dtb_addr == 0 {
 		return Err(());
 	}

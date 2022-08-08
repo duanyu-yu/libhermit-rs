@@ -325,4 +325,17 @@ pub fn init_fs() {
 	info!("Mounting virtio-fs at /{}", tag);
 	fs.mount(tag, Box::new(fuse))
 		.expect("Mount failed. Duplicate tag?");
+
+	// TODO: Test open file 
+	let testperm = fs::FilePerms{
+		write: true,
+		creat: true,
+		excl: true,
+		trunc: true,
+		append: true,
+		directio: true,
+		raw: 0,
+		mode: 0,};
+
+	fs.open("/root/testfile.txt", testperm);
 }

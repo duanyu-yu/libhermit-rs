@@ -1,8 +1,9 @@
 use alloc::collections::BTreeMap;
 #[cfg(feature = "newlib")]
 use core::slice;
+use core::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 
-use hermit_entry::{BootInfo, PlatformInfo, RawBootInfo};
+use hermit_entry::boot_info::{BootInfo, PlatformInfo, RawBootInfo};
 use x86::controlregs::{cr0, cr0_write, cr4, Cr0};
 
 use crate::arch::mm::{PhysAddr, VirtAddr};
@@ -55,6 +56,7 @@ pub fn boot_info() -> &'static BootInfo {
 	unsafe { BOOT_INFO.as_ref().unwrap() }
 }
 
+#[cfg(feature = "smp")]
 pub fn raw_boot_info() -> &'static RawBootInfo {
 	unsafe { RAW_BOOT_INFO.unwrap() }
 }
@@ -63,25 +65,26 @@ pub fn raw_boot_info() -> &'static RawBootInfo {
 static mut COM1: SerialPort = SerialPort::new(0x3f8);
 
 pub fn get_ram_address() -> PhysAddr {
-	PhysAddr(boot_info().phys_addr_range.start)
+	PhysAddr(boot_info().hardware_info.phys_addr_range.start)
 }
 
 pub fn get_base_address() -> VirtAddr {
-	VirtAddr(boot_info().kernel_image_addr_range.start)
+	VirtAddr(boot_info().load_info.kernel_image_addr_range.start)
 }
 
 pub fn get_image_size() -> usize {
-	let range = &boot_info().kernel_image_addr_range;
+	let range = &boot_info().load_info.kernel_image_addr_range;
 	(range.end - range.start) as usize
 }
 
 pub fn get_limit() -> usize {
-	boot_info().phys_addr_range.end as usize
+	boot_info().hardware_info.phys_addr_range.end as usize
 }
 
 pub fn get_tls_start() -> VirtAddr {
 	VirtAddr(
 		boot_info()
+			.load_info
 			.tls_info
 			.as_ref()
 			.map(|tls_info| tls_info.start)
@@ -91,6 +94,7 @@ pub fn get_tls_start() -> VirtAddr {
 
 pub fn get_tls_filesz() -> usize {
 	boot_info()
+		.load_info
 		.tls_info
 		.as_ref()
 		.map(|tls_info| tls_info.filesz)
@@ -99,6 +103,7 @@ pub fn get_tls_filesz() -> usize {
 
 pub fn get_tls_memsz() -> usize {
 	boot_info()
+		.load_info
 		.tls_info
 		.as_ref()
 		.map(|tls_info| tls_info.memsz)
@@ -107,6 +112,7 @@ pub fn get_tls_memsz() -> usize {
 
 pub fn get_tls_align() -> usize {
 	boot_info()
+		.load_info
 		.tls_info
 		.as_ref()
 		.map(|tls_info| tls_info.align)
@@ -139,7 +145,7 @@ pub fn get_possible_cpus() -> u32 {
 
 #[cfg(feature = "smp")]
 pub fn get_processor_count() -> u32 {
-	raw_boot_info().load_cpu_online()
+	CPU_ONLINE.load(Ordering::Acquire)
 }
 
 #[cfg(not(feature = "smp"))]
@@ -185,6 +191,7 @@ pub fn message_output_init() {
 
 	unsafe {
 		COM1.port_address = boot_info()
+			.hardware_info
 			.serial_port_base
 			.map(|uartport| uartport.get())
 			.unwrap_or_default();
@@ -333,7 +340,7 @@ fn finish_processor_init() {
 
 	// This triggers apic::boot_application_processors (bare-metal/QEMU) or uhyve
 	// to initialize the next processor.
-	raw_boot_info().increment_cpu_online();
+	CPU_ONLINE.fetch_add(1, Ordering::Release);
 }
 
 pub fn print_statistics() {
@@ -356,10 +363,17 @@ pub fn print_statistics() {
 	}
 }
 
+/// `CPU_ONLINE` is the count of CPUs that finished initialization.
+///
+/// It also synchronizes initialization of CPU cores.
+pub static CPU_ONLINE: AtomicU32 = AtomicU32::new(0);
+
+pub static CURRENT_STACK_ADDRESS: AtomicU64 = AtomicU64::new(0);
+
 #[cfg(target_os = "none")]
 #[inline(never)]
 #[no_mangle]
-unsafe extern "C" fn pre_init(boot_info: &'static RawBootInfo) -> ! {
+unsafe extern "C" fn pre_init(boot_info: &'static RawBootInfo, cpu_id: u32) -> ! {
 	// Enable caching
 	unsafe {
 		let mut cr0 = cr0();
@@ -369,10 +383,10 @@ unsafe extern "C" fn pre_init(boot_info: &'static RawBootInfo) -> ! {
 
 	unsafe {
 		RAW_BOOT_INFO = Some(boot_info);
-		BOOT_INFO = Some(BootInfo::copy_from(boot_info));
+		BOOT_INFO = Some(BootInfo::from(*boot_info));
 	}
 
-	if boot_info.load_cpu_online() == 0 {
+	if cpu_id == 0 {
 		crate::boot_processor_main()
 	} else {
 		#[cfg(not(feature = "smp"))]

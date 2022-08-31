@@ -179,6 +179,7 @@ impl FuseInterface for VirtioFsDriver<'_> {
 		if let Some(ref mut vqueues) = self.vqueues {
 			if let Some(mut rsp) = rsp {
 				vqueues[1].send_blocking(&cmd.to_u8buf(), Some(&rsp.to_u8buf_mut()));
+				debug!("send blocking to vqueues succeed");
 				trace!("Got Fuse Reply: {:?}", rsp);
 				return Some(rsp);
 			}
@@ -326,16 +327,18 @@ pub fn init_fs() {
 	fs.mount(tag, Box::new(fuse))
 		.expect("Mount failed. Duplicate tag?");
 
+	info!("Mounting succeed");
+
 	// TODO: Test open file 
 	let testperm = fs::FilePerms{
 		write: true,
-		creat: true,
+		creat: false,
 		excl: true,
 		trunc: true,
 		append: true,
 		directio: true,
 		raw: 0,
-		mode: 0,};
+		mode: 0x777,};
 
 	fs.open("/root/testfile.txt", testperm);
 }

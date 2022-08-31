@@ -151,11 +151,14 @@ pub fn get_network_driver() -> Option<&'static SpinlockIrqSave<dyn NetworkInterf
 }
 
 pub fn get_filesystem_driver() -> Option<&'static SpinlockIrqSave<VirtioFsDriver<'static>>> {
-	unsafe {
+	let driver = unsafe {
 		PCI_DRIVERS
 			.iter()
 			.find_map(|drv| drv.get_filesystem_driver())
-	}
+	};
+	debug!("get pci fs driver succeed");
+
+	return driver;
 }
 
 /// Reads all bar registers of specified device and returns vector of PciBar's containing addresses and sizes.

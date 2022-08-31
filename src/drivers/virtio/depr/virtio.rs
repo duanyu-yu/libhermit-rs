@@ -347,9 +347,14 @@ impl<'a> Virtq<'a> {
 			self.notify_device();
 		}
 
+		debug!("notify device succeed");
+
 		// wait until done (placed in used buffer)
 		let mut vqused = self.used.borrow_mut();
+		debug!("used borrow mut succeed");
 		vqused.wait_until_done(&chain);
+
+		debug!("wait until done succeed");;
 
 		// give chain back, so we can reuse the descriptors!
 		drop(chain);
@@ -632,6 +637,7 @@ impl<'a> VirtqUsed<'a> {
 		// TODO: this might break if we have multiple running transfers at a time?
 		while unsafe { core::ptr::read_volatile(self.idx) } == self.last_idx {
 			spin_loop();
+			// TODO: [Issue] Endless loop
 		}
 		self.last_idx = *self.idx;
 

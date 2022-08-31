@@ -33,8 +33,11 @@ impl PosixFileSystem for Fuse {
 
 		// Differentiate between opening and creating new file, since fuse does not support O_CREAT on open.
 		if !perms.creat {
+			debug!("Fuse: Opening file");
+
 			// 2.FUSE_LOOKUP(FUSE_ROOT_ID, “foo”) -> nodeid
 			file.fuse_nid = self.lookup(path);
+			debug!("Lookup succeed");
 
 			if file.fuse_nid == None {
 				warn!("Fuse lookup seems to have failed!");
@@ -51,6 +54,7 @@ impl PosixFileSystem for Fuse {
 			trace!("Open answer {:?}", rsp);
 			file.fuse_fh = Some(rsp.rsp.fh);
 		} else {
+			debug!("Fuse: Creating new file");
 			// Create file (opens implicitly, returns results from both lookup and open calls)
 			let (cmd, rsp) = create_create(path, perms.raw, perms.mode);
 			let rsp = get_filesystem_driver()
@@ -95,10 +99,14 @@ impl Fuse {
 
 	pub fn lookup(&self, name: &str) -> Option<u64> {
 		let (cmd, rsp) = create_lookup(name);
+		debug!("create lookup succeed");
+
 		let rsp = get_filesystem_driver()
 			.unwrap()
 			.lock()
 			.send_command(cmd, Some(rsp));
+		debug!("Get fs driver succeed");
+
 		Some(rsp.unwrap().rsp.nodeid)
 	}
 }

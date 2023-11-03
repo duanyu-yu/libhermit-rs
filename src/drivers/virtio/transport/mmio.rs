@@ -21,6 +21,8 @@ use crate::drivers::net::virtio_net::VirtioNetDriver;
 use crate::drivers::virtio::device;
 use crate::drivers::virtio::error::VirtioError;
 
+pub const MAGIC_VALUE: u32 = 0x74726976;
+
 /// Virtio device ID's
 /// See Virtio specification v1.1. - 5
 ///
@@ -466,6 +468,14 @@ pub struct MmioRegisterLayout {
 }
 
 impl MmioRegisterLayout {
+	pub fn check_magic(&self) -> bool {
+		self.get_magic_value() == MAGIC_VALUE
+	}
+
+	pub fn is_non_legacy(&self) -> bool {
+		self.get_version() == 0x2
+	}
+
 	pub fn get_magic_value(&self) -> u32 {
 		unsafe { read_volatile(&self.magic_value) }
 	}

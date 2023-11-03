@@ -11,6 +11,8 @@ use crate::arch::x86_64::mm::{paging, PhysAddr};
 use crate::drivers::net::virtio_net::VirtioNetDriver;
 use crate::drivers::virtio::transport::mmio as mmio_virtio;
 use crate::drivers::virtio::transport::mmio::{DevId, MmioRegisterLayout, VirtioDriver};
+#[cfg(feature = "fc")]
+use crate::env;
 
 pub const MAGIC_VALUE: u32 = 0x74726976;
 
@@ -49,6 +51,7 @@ impl MmioDriver {
 
 /// Tries to find the network device within the specified address range.
 /// Returns a reference to it within the Ok() if successful or an Err() on failure.
+#[cfg(not(feature = "fc"))]
 pub fn detect_network() -> Result<&'static mut MmioRegisterLayout, &'static str> {
 	// Trigger page mapping in the first iteration!
 	let mut current_page = 0;
@@ -126,6 +129,140 @@ pub fn detect_network() -> Result<&'static mut MmioRegisterLayout, &'static str>
 	crate::arch::mm::virtualmem::deallocate(virtual_address, BasePageSize::SIZE as usize);
 
 	Err("Network card not found!")
+}
+
+/// Detect network card from cmdline if running on firecracker.
+/// Returns a reference to it within the Ok() if successful or an Err() on failure.
+#[cfg(feature = "fc")]
+pub fn detect_network() -> Result<&'static mut MmioRegisterLayout, &'static str> {
+	let mut current_page = 0;
+	let virtual_address = crate::arch::mm::virtualmem::allocate(BasePageSize::SIZE as usize).unwrap();
+
+	let clis = env::devices();
+
+	if clis.is_empty() {
+		return Err("No devices info from cmd!");
+	}
+
+	for cli in clis {
+		debug!("MMIO Device infomation from CLI: {cli}");
+
+		let mut words: Vec<_> = cli.split(|c| c == '@' || c == ':').collect();
+
+		let mut id = "";
+
+		if words.len() == 4 {
+			id = words.pop().unwrap();
+		}
+
+		let _irq = words.pop().unwrap();
+		let baseaddr_str = words.pop().unwrap();
+		let _size = words.pop().unwrap();
+
+		let baseaddr = usize::from_str_radix(&baseaddr_str[2..], 16).unwrap();
+
+		if baseaddr / BasePageSize::SIZE as usize > current_page {
+			let mut flags = PageTableEntryFlags::empty();
+			flags.normal().writable();
+			paging::map::<BasePageSize>(
+				virtual_address,
+				PhysAddr::from(baseaddr.align_down(BasePageSize::SIZE as usize)),
+				1,
+				flags,
+			);
+
+			current_page = baseaddr / BasePageSize::SIZE as usize;
+		}
+
+		let mmio = unsafe {
+			&mut *((virtual_address.as_usize()
+				| (baseaddr & (BasePageSize::SIZE as usize - 1)))
+				as *mut MmioRegisterLayout)
+		};
+
+		if !mmio.check_magic() || !mmio.is_non_legacy() {
+			debug!("Invalid Magic or/and it's a legacy device!");
+			continue;
+		}
+
+		trace!("Found a MMIO-device at {:#X}", mmio as *const _ as usize);
+
+		if mmio.get_device_id() != DevId::VIRTIO_DEV_ID_NET {
+			trace!(
+				"It's not a network card at {:#X}",
+				mmio as *const _ as usize
+			);
+			continue;
+		}
+
+		trace!("Found network card at {:#X}", mmio as *const _ as usize);
+
+		crate::arch::mm::physicalmem::reserve(
+			PhysAddr::from(baseaddr.align_down(BasePageSize::SIZE as usize)),
+			BasePageSize::SIZE as usize,
+		);
+
+		return Ok(mmio);
+	}
+
+	// frees obsolete virtual memory region for MMIO devices
+	crate::arch::mm::virtualmem::deallocate(virtual_address, BasePageSize::SIZE as usize);
+
+	Err("Network card not found!")
+}
+
+#[cfg(not(feature = "fc"))]
+fn detect_from_addr(start: usize, end: usize, len: usize) -> Vec<&'static mut MmioRegisterLayout> {
+	let mut mmios = Vec::new();
+
+	// Trigger page mapping in the first iteration!
+	let mut current_page = 0;
+	let virtual_address =
+		crate::arch::mm::virtualmem::allocate(BasePageSize::SIZE as usize).unwrap();
+
+	for current_address in (start..end).step_by(len) {
+		trace!(
+			"Detecting MMIO device at physical address {:#X}",
+			current_address
+		);
+		// Check if we crossed a page boundary in the last iteration.
+		if current_address / BasePageSize::SIZE as usize > current_page {
+			let mut flags = PageTableEntryFlags::empty();
+			flags.normal().writable();
+			paging::map::<BasePageSize>(
+				virtual_address,
+				PhysAddr::from(current_address.align_down(BasePageSize::SIZE as usize)),
+				1,
+				flags,
+			);
+
+			current_page = current_address / BasePageSize::SIZE as usize;
+		}
+
+		let mmio = unsafe {
+			&mut *((virtual_address.as_usize()
+				| (current_address & (BasePageSize::SIZE as usize - 1)))
+				as *mut MmioRegisterLayout)
+		};
+
+		if !mmio.check_magic() || !mmio.is_non_legacy() {
+			debug!("Invalid Magic or/and it's a legacy device!");
+			continue;
+		}
+
+		trace!("Found a MMIO-device at {:#X}", mmio as *const _ as usize);
+
+		mmios.push(mmio);
+	}
+
+	if mmios.is_empty() {
+		// frees obsolete virtual memory region for MMIO devices
+		crate::arch::mm::virtualmem::deallocate(virtual_address, BasePageSize::SIZE as usize);
+
+		debug!("MMIO device not found!")
+	}
+
+	return mmios;
 }
 
 pub(crate) fn register_driver(drv: MmioDriver) {

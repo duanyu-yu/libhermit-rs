@@ -26,6 +26,7 @@ struct Cli {
 	freq: Option<u16>,
 	env_vars: HashMap<String, String, RandomState>,
 	args: Vec<String>,
+	devices: Vec<String>,
 }
 
 /// Whether Hermit is running under the "uhyve" hypervisor.
@@ -41,6 +42,7 @@ impl Default for Cli {
 			RandomState::with_seeds(0, 0, 0, 0),
 		);
 		let mut args = Vec::new();
+		let mut devices = Vec::new();
 
 		let words = shell_words::split(kernel::args().unwrap_or_default()).unwrap();
 		debug!("cli_words = {words:?}");
@@ -70,12 +72,17 @@ impl Default for Cli {
 					env_vars.insert(String::from("HERMIT_GATEWAY"), gateway);
 				}
 				"--" => args.extend(&mut words),
-				_ if image_path.is_none() => image_path = Some(word),
-				word => panic!(
-					"Found argument '{word}' which wasn't expected, or isn't valid in this context
-			
- 		If you tried to supply `{word}` as a value rather than a flag, use `-- {word}`"
-				),
+				word => {
+					if word.starts_with("virtio_mmio.device=") {
+						// Take the mmio device information
+						let device = &word[19..];
+						devices.push(String::from(device));
+					} else if image_path.is_none() {
+						image_path = Some(String::from(word));
+					} else {
+						panic!("Found argument '{word}' which wasn't expected, or isn't valid in this context. \n If you tried to supply `{word}` as a value rather than a flag, use `-- {word}`");
+					}
+				}
 			};
 		}
 
@@ -84,6 +91,7 @@ impl Default for Cli {
 			freq,
 			env_vars,
 			args,
+			devices,
 		}
 	}
 }
@@ -105,4 +113,9 @@ pub fn vars() -> Iter<'static, String, String> {
 /// Returns the cmdline argument passed in after "--"
 pub fn args() -> &'static [String] {
 	CLI.get().unwrap().args.as_slice()
+}
+
+/// Returns the devices list if there's devices passed in through cmdline.
+pub fn devices() -> &'static [String] {
+	CLI.get().unwrap().devices.as_slice()
 }
